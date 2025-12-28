@@ -633,7 +633,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Contact Us</CardTitle>
                 <CardDescription>
-                  Send us a message and we'll get back to you
+                  Send us a message and we&apos;ll get back to you
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
