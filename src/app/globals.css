@@ -149,6 +149,59 @@
   }
 }
 
+/* MDXEditor Layout - sticky toolbar, scrollable content */
+.mdxeditor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mdxeditor .mdxeditor-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.mdxeditor .mdxeditor-root-contenteditable {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* MDXEditor Toolbar - Design System Styling */
+.mdxeditor .mdxeditor-toolbar {
+  gap: 0.5rem;
+}
+
+.mdxeditor .mdxeditor-toolbar button {
+  color: var(--muted-foreground) !important;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.mdxeditor .mdxeditor-toolbar button:hover {
+  color: var(--foreground) !important;
+  opacity: 1;
+}
+
+.mdxeditor .mdxeditor-toolbar button[data-state="on"],
+.mdxeditor .mdxeditor-toolbar button[aria-pressed="true"] {
+  color: var(--foreground) !important;
+  opacity: 1;
+  background: var(--muted);
+}
+
+.mdxeditor .mdxeditor-toolbar button svg {
+  color: inherit !important;
+}
+
+.mdxeditor .mdxeditor-toolbar select {
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
 /* PRD Editor Markdown Styles */
 .prd-editor-content {
   /* Headings */

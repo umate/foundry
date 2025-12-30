@@ -1,3 +1,4 @@
+import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { featureRepository } from '@/db/repositories/feature.repository';
 import { projectRepository } from '@/db/repositories/project.repository';
@@ -9,6 +10,19 @@ interface FeaturePageProps {
     id: string;
     featureId: string;
   }>;
+}
+
+export async function generateMetadata({ params }: FeaturePageProps): Promise<Metadata> {
+  const { featureId } = await params;
+  const feature = await featureRepository.findById(featureId);
+
+  if (!feature) {
+    return { title: 'Feature Not Found' };
+  }
+
+  return {
+    title: feature.title,
+  };
 }
 
 export default async function FeaturePage({ params }: FeaturePageProps) {

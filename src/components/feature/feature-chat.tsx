@@ -28,6 +28,7 @@ interface FeatureChatProps {
   initialIdea?: string;
   initialMessages?: FeatureMessage[];
   onPRDGenerated: (prd: MiniPRD) => void;
+  hasSavedPrd?: boolean;
 }
 
 // Simplified display message type for hydrated messages
@@ -110,7 +111,8 @@ export function FeatureChat({
   featureId,
   initialIdea,
   initialMessages = [],
-  onPRDGenerated
+  onPRDGenerated,
+  hasSavedPrd = false
 }: FeatureChatProps) {
   const [input, setInput] = useState("");
   const [answeredClarifications, setAnsweredClarifications] = useState<Set<string>>(new Set());
@@ -208,6 +210,8 @@ export function FeatureChat({
   // Watch for PRD generation in messages - use ref to prevent duplicate callbacks
   useEffect(() => {
     if (hasNotifiedPRDRef.current) return;
+    // Skip if PRD already saved in DB - don't overwrite user edits
+    if (hasSavedPrd) return;
 
     for (const message of messages) {
       if (message.role === "assistant" && message.parts) {
@@ -227,7 +231,7 @@ export function FeatureChat({
         }
       }
     }
-  }, [messages, onPRDGenerated]);
+  }, [messages, onPRDGenerated, hasSavedPrd]);
 
   const handleOptionSelect = (label: string, description: string, clarificationKey: string) => {
     setAnsweredClarifications((prev) => new Set(prev).add(clarificationKey));

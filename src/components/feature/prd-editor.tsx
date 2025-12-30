@@ -21,16 +21,18 @@ import {
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { forwardRef, useState, useEffect } from 'react';
+import { Check } from '@phosphor-icons/react';
 
 interface PRDEditorProps {
   content: string;
   onChange: (markdown: string) => void;
   isLocked?: boolean;
   placeholder?: string;
+  saveStatus?: 'idle' | 'saving' | 'saved';
 }
 
 export const PRDEditor = forwardRef<MDXEditorMethods, PRDEditorProps>(
-  function PRDEditor({ content, onChange, isLocked = false, placeholder }, ref) {
+  function PRDEditor({ content, onChange, isLocked = false, placeholder, saveStatus = 'idle' }, ref) {
     // Avoid hydration mismatch by only rendering the editor on the client
     // (UndoRedo shows platform-specific shortcuts like ⌘Z vs Ctrl+Z)
     const [mounted, setMounted] = useState(false);
@@ -45,7 +47,7 @@ export const PRDEditor = forwardRef<MDXEditorMethods, PRDEditorProps>(
     }
 
     return (
-      <div className={`relative h-full bg-white ${isLocked ? 'pointer-events-none' : ''}`}>
+      <div className={`relative h-full bg-white flex flex-col ${isLocked ? 'pointer-events-none' : ''}`}>
         {isLocked && (
           <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
             <div className="font-mono text-sm uppercase tracking-wider text-muted-foreground animate-pulse">
@@ -71,13 +73,27 @@ export const PRDEditor = forwardRef<MDXEditorMethods, PRDEditorProps>(
             linkDialogPlugin(),
             toolbarPlugin({
               toolbarContents: () => (
-                <div className="flex items-center gap-1 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap w-full">
                   <UndoRedo />
+                  <div className="w-px h-4 bg-border" />
                   <BlockTypeSelect />
+                  <div className="w-px h-4 bg-border" />
                   <BoldItalicUnderlineToggles />
                   <ListsToggle />
+                  <div className="w-px h-4 bg-border" />
                   <CreateLink />
                   <InsertTable />
+                  <div className="flex-1" />
+                  {saveStatus === 'saving' && (
+                    <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider animate-pulse">
+                      Saving...
+                    </span>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider flex items-center gap-1">
+                      <Check className="size-3" weight="bold" /> Saved
+                    </span>
+                  )}
                 </div>
               ),
             }),
