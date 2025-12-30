@@ -66,113 +66,41 @@ npx shadcn@latest add <component>
 
 After adding, customize to match the design system (rectangular shapes, monospace font, appropriate colors).
 
-## Database Management
+## Database (Drizzle ORM)
 
-### Migration Workflow
+Run `/db` skill for full patterns. **CRITICAL: Always use repositories, never access db directly.**
 
-1. **Edit Schema** - Modify `src/db/schema.ts`
-2. **Generate Migration** - `bun db:generate --name=<semantic_name>`
-3. **Review SQL** - Check generated file in `drizzle/migrations/`
-4. **Apply Migration** - `bun db:migrate`
-5. **Commit** - Add migration files to git
+- **Schema**: `src/db/schema.ts`
+- **Repositories**: `src/db/repositories/*.repository.ts`
+- **Migrations**: `bun db:generate --name=<action>_<table>` then `bun db:migrate`
 
-**Migration Naming:**
-- Use snake_case: `create_posts_table`, `add_user_role_column`
-- Start with action: `create_`, `add_`, `update_`, `remove_`
-- Be specific: `add_email_index` not `update_users`
+## AI SDK v6
 
-**Example:**
-```bash
-# Add new table to src/db/schema.ts
-bun db:generate --name=create_posts_table
-bun db:migrate
-git add drizzle/migrations/
-git commit -m "Add posts table"
-```
+For AI features, use AI SDK v6 patterns. Run `/ai-sdk-v6` skill for full docs.
 
-**Important:** Migration SQL files in `drizzle/migrations/` should be committed to git. The `.gitignore` is configured to commit migrations while ignoring metadata files.
+### Key v6 Changes
+- `inputSchema` (not `parameters`) for tools
+- `stopWhen: stepCountIs(10)` (not `maxSteps`)
+- `toUIMessageStreamResponse()` (not `toAIStreamResponse()`)
+- `convertToModelMessages(messages)` for UIMessage → ModelMessage
 
-### Repository Pattern
-
-**CRITICAL: NEVER access the database directly. Always use repositories.**
-
-All database access must go through repository classes in `src/db/repositories/`. This ensures:
-- Type safety
-- Consistent data access patterns
-- Easy testing and mocking
-- Clear separation of concerns
-
-**Creating a Repository:**
+### Quick Examples
 
 ```typescript
-// src/db/repositories/post.repository.ts
-import { eq } from 'drizzle-orm';
-import { db, schema } from '@/db';
-import type { Post, NewPost } from '@/db/schema';
-
-export class PostRepository {
-  async findById(id: string): Promise<Post | null> {
-    return await db.query.posts.findFirst({
-      where: eq(schema.posts.id, id),
-    }) ?? null;
-  }
-
-  async findMany(limit = 10, offset = 0): Promise<Post[]> {
-    return await db.query.posts.findMany({ limit, offset });
-  }
-
-  async create(data: NewPost): Promise<Post> {
-    const result = await db
-      .insert(schema.posts)
-      .values(data)
-      .returning();
-    return result[0];
-  }
-}
-
-export const postRepository = new PostRepository();
-```
-
-**Using Repositories:**
-
-```typescript
-// ✅ CORRECT - Use repository
-import { userRepository } from '@/db/repositories/user.repository';
-
-const user = await userRepository.findByEmail('test@example.com');
-const users = await userRepository.findMany({ limit: 10 });
-
-// ❌ WRONG - Direct database access
-import { db } from '@/db';
-const user = await db.select().from(users); // NEVER DO THIS
-```
-
-### Schema Conventions
-
-- **Table names**: Lowercase plural (`users`, `posts`, `comments`)
-- **Column names**: snake_case (`created_at`, `user_id`, `email_address`)
-- **Primary keys**: UUID with `defaultRandom()` (not auto-increment)
-- **Timestamps**: Always include `created_at` and `updated_at`
-- **Types**: Export from schema using `$inferSelect` and `$inferInsert`
-
-**Example Table:**
-```typescript
-export const posts = pgTable('posts', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  title: text('title').notNull(),
-  content: text('content'),
-  userId: uuid('user_id').references(() => users.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+// Tool definition
+const myTool = tool({
+  description: 'Tool description',
+  inputSchema: z.object({ query: z.string() }),
+  execute: async ({ query }) => ({ result: '...' }),
 });
 
-export type Post = typeof posts.$inferSelect;
-export type NewPost = typeof posts.$inferInsert;
+// Agent
+const agent = new ToolLoopAgent({
+  model: 'anthropic/claude-sonnet-4.5',
+  stopWhen: stepCountIs(10),
+  tools: { myTool },
+});
+
+// API route
+return createAgentUIStreamResponse({ agent, messages });
 ```
-
-### Bun-Specific Notes
-
-- Bun automatically loads `.env.local` when running scripts
-- Use `bun run` for TypeScript files: `bun run src/db/migrate.ts`
-- Migration runner at `src/db/migrate.ts` handles environment loading
-- No need for `dotenv` package - Bun handles it natively

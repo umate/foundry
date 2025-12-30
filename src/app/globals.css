@@ -71,7 +71,7 @@
 
   --destructive: #8B0000;
 
-  --border: #000000;
+  --border: rgba(0, 0, 0, 0.15);
   --input: #000000;
   --ring: #4A4A4A;
 
@@ -146,5 +146,74 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* PRD Editor Markdown Styles */
+.prd-editor-content {
+  /* Headings */
+  h1 {
+    @apply text-2xl font-bold mt-6 mb-4 pb-2 border-b border-border;
+  }
+  h2 {
+    @apply text-xl font-bold mt-5 mb-3;
+  }
+  h3 {
+    @apply text-lg font-bold mt-4 mb-2;
+  }
+  h4 {
+    @apply text-base font-bold mt-3 mb-2;
+  }
+  h5, h6 {
+    @apply text-sm font-bold mt-2 mb-1;
+  }
+
+  /* Lists */
+  ul {
+    @apply list-disc pl-6 my-3 space-y-1;
+  }
+  ol {
+    @apply list-decimal pl-6 my-3 space-y-1;
+  }
+  li {
+    @apply leading-relaxed;
+  }
+  li > ul, li > ol {
+    @apply mt-1 mb-0;
+  }
+
+  /* Blockquotes */
+  blockquote {
+    @apply border-l-4 border-muted pl-4 my-3 italic text-muted-foreground;
+  }
+
+  /* Horizontal rules */
+  hr {
+    @apply my-6 border-t border-border;
+  }
+
+  /* Paragraphs */
+  p {
+    @apply my-2 leading-relaxed;
+  }
+
+  /* Links */
+  a {
+    @apply text-secondary underline hover:opacity-80;
+  }
+
+  /* Code */
+  code {
+    @apply bg-muted px-1.5 py-0.5 rounded-sm text-sm;
+  }
+
+  /* Strong/Bold */
+  strong {
+    @apply font-bold;
+  }
+
+  /* Emphasis/Italic */
+  em {
+    @apply italic;
   }
 }
