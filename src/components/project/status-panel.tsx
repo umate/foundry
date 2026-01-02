@@ -1,6 +1,6 @@
 'use client';
 
-import { GearSix } from '@phosphor-icons/react';
+import { GearSix, Lightbulb, Target, Play, CheckCircle } from '@phosphor-icons/react';
 import { Feature, FeatureStatus, STATUS_LABELS } from '@/types/feature';
 import { CompactFeatureRow } from './compact-feature-row';
 
@@ -11,6 +11,19 @@ interface StatusPanelProps {
   onFeatureUpdated: () => void;
 }
 
+const getStatusIcon = (status: FeatureStatus) => {
+  switch (status) {
+    case 'idea':
+      return <Lightbulb weight="bold" className="size-4" />;
+    case 'scoped':
+      return <Target weight="bold" className="size-4" />;
+    case 'current':
+      return <Play weight="bold" className="size-4" />;
+    case 'done':
+      return <CheckCircle weight="bold" className="size-4" />;
+  }
+};
+
 export function StatusPanel({
   status,
   features,
@@ -18,10 +31,11 @@ export function StatusPanel({
   onFeatureUpdated,
 }: StatusPanelProps) {
   return (
-    <div className="flex flex-col h-full border-r border-foreground/10 last:border-r-0 bg-white dark:bg-card/30">
+    <div className="flex flex-col h-full bg-white dark:bg-card/30">
       {/* Panel Header - Pivotal Tracker style */}
-      <div className="h-9 px-3 flex items-center justify-between border-b border-foreground/10 bg-card/50 shrink-0">
+      <div className="h-9 px-3 flex items-center justify-between border-b border-foreground/20 bg-card/50 shrink-0">
         <div className="flex items-center gap-2">
+          {getStatusIcon(status)}
           <span className="font-mono text-xs font-bold uppercase tracking-wider">
             {STATUS_LABELS[status]}
           </span>

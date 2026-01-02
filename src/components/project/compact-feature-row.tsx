@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lightbulb, Play, Check, Target } from '@phosphor-icons/react';
+import { Lightbulb, Play, Check, Target, CheckCircle } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Feature, FeatureStatus } from '@/types/feature';
@@ -12,6 +12,19 @@ interface CompactFeatureRowProps {
   projectId: string;
   onUpdated: () => void;
 }
+
+const getFeatureIcon = (status: FeatureStatus) => {
+  switch (status) {
+    case 'idea':
+      return <Lightbulb className="size-4 text-secondary shrink-0" />;
+    case 'scoped':
+      return <Target className="size-4 text-secondary shrink-0" />;
+    case 'current':
+      return <Play className="size-4 text-secondary shrink-0" />;
+    case 'done':
+      return <CheckCircle className="size-4 text-secondary shrink-0" />;
+  }
+};
 
 export function CompactFeatureRow({
   feature,
@@ -91,7 +104,7 @@ export function CompactFeatureRow({
       onClick={handleRowClick}
     >
       {/* Type Icon */}
-      <Lightbulb className="size-4 text-secondary shrink-0" />
+      {getFeatureIcon(feature.status)}
 
       {/* Title - truncate */}
       <span className="flex-1 font-mono text-sm truncate">{feature.title}</span>

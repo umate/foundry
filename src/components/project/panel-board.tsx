@@ -17,7 +17,7 @@ export function PanelBoard({
   return (
     <div className="flex-1 flex overflow-hidden">
       {STATUS_ORDER.map((status) => (
-        <div key={status} className="flex-1 min-w-0">
+        <div key={status} className="flex-1 min-w-0 border-r border-foreground/5 last:border-r-0">
           <StatusPanel
             status={status}
             features={features[status]}
