@@ -122,7 +122,7 @@ export function EditFeatureDialog({
             <label className="text-sm font-medium font-mono uppercase tracking-wider">
               Status
             </label>
-            <Select value={status} onValueChange={(value: any) => setStatus(value)}>
+            <Select value={status} onValueChange={(value: "idea" | "scoped" | "ready" | "done") => setStatus(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

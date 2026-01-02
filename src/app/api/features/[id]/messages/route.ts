@@ -2,6 +2,28 @@ import { NextRequest } from 'next/server';
 import { featureRepository } from '@/db/repositories/feature.repository';
 import { featureMessageRepository } from '@/db/repositories/feature-message.repository';
 
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: featureId } = await params;
+
+  const feature = await featureRepository.findById(featureId);
+  if (!feature) {
+    return new Response(JSON.stringify({ error: 'Feature not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  await featureMessageRepository.deleteByFeatureId(featureId);
+
+  // Clear initialIdea to prevent re-triggering on reload
+  await featureRepository.update(featureId, { initialIdea: null });
+
+  return Response.json({ success: true });
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

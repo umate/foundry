@@ -81,14 +81,14 @@ export function AddIdeaDialog({
             New Idea
           </DialogTitle>
           <DialogDescription>
-            Describe your feature idea. You'll refine it with AI on the next page.
+            Describe your feature idea. You&apos;ll refine it with AI on the next page.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium font-mono uppercase tracking-wider">
-              What's your idea? *
+              What&apos;s your idea? *
             </label>
             <Textarea
               value={ideaText}

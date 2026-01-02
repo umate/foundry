@@ -65,6 +65,7 @@ export const PRDEditor = forwardRef<MDXEditorMethods, PRDEditorProps>(
     const [mounted, setMounted] = useState(false);
     const [copied, setCopied] = useState(false);
     const [copiedForAgent, setCopiedForAgent] = useState(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration mismatch pattern: intentional setState for client-only rendering
     useEffect(() => setMounted(true), []);
 
     const handleCopyMarkdown = async () => {

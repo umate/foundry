@@ -4,8 +4,21 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PaperPlaneRightIcon, StopIcon, CircleIcon } from "@phosphor-icons/react";
+import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import ReactMarkdown from "react-markdown";
 import type { FeatureMessage } from "@/db/schema";
 import { PendingChangeCard } from "./pending-change-card";
@@ -41,6 +54,8 @@ interface FeatureChatProps {
   /** Whether there's a pending change awaiting review */
   hasPendingChange?: boolean;
   hasSavedPrd?: boolean;
+  /** Called when session is reset to clear parent state */
+  onSessionReset?: () => void;
 }
 
 // Simplified display message type for hydrated messages
@@ -159,17 +174,19 @@ export function FeatureChat({
   onRejectChange,
   currentPrdMarkdown,
   hasPendingChange = false,
-  hasSavedPrd = false
+  hasSavedPrd = false,
+  onSessionReset
 }: FeatureChatProps) {
   const [input, setInput] = useState("");
   const [answeredClarifications, setAnsweredClarifications] = useState<Set<string>>(new Set());
   // Track resolved updatePRD tool calls: key is message-part key, value is resolution status
   const [resolvedChanges, setResolvedChanges] = useState<Map<string, "accepted" | "rejected">>(new Map());
   const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const hasSentInitialIdeaRef = useRef(false);
   const hasNotifiedPRDRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const savedMessageIdsRef = useRef<Set<string>>(new Set());
 
   // Convert initial DB messages to display format
@@ -344,7 +361,17 @@ export function FeatureChat({
 
   const handleOtherSelect = (clarificationKey: string) => {
     setAnsweredClarifications((prev) => new Set(prev).add(clarificationKey));
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends, Shift+Enter for newline
+    if (e.key === "Enter" && !e.shiftKey && !isLoading && input.trim()) {
+      e.preventDefault();
+      saveMessage("user", { text: input });
+      sendMessage({ text: input });
+      setInput("");
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -356,14 +383,45 @@ export function FeatureChat({
     }
   };
 
+  const handleResetSession = async () => {
+    try {
+      const response = await fetch(`/api/features/${featureId}/messages`, {
+        method: "DELETE"
+      });
+      if (response.ok) {
+        // Clear local refs to prevent stale state
+        savedMessageIdsRef.current.clear();
+        hasSentInitialIdeaRef.current = false;
+        hasNotifiedPRDRef.current = false;
+        hasNotifiedUpdateRef.current = false;
+        // Clear local state
+        setAnsweredClarifications(new Set());
+        setResolvedChanges(new Map());
+        // Notify parent to remount this component with fresh state
+        onSessionReset?.();
+      }
+    } catch (err) {
+      console.error("Failed to reset session:", err);
+    }
+    setShowResetDialog(false);
+  };
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && !initialIdea && (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-muted-foreground text-sm text-center px-8">Describe your idea to get started</p>
-          </div>
+          <Empty className="h-full border-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <PaperPlaneRightIcon weight="duotone" />
+              </EmptyMedia>
+              <EmptyTitle>Start a conversation</EmptyTitle>
+              <EmptyDescription>
+                Ask questions about the PRD or request changes to refine it further.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
 
         {messages.map((message) => {
@@ -552,30 +610,82 @@ export function FeatureChat({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border p-4 bg-white">
+      <div className="border-t border-border p-3 bg-white">
         {hasPendingChange ? (
           <div className="text-center text-sm text-muted-foreground py-2">
             Review the proposed changes before continuing
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your response..."
-              disabled={isLoading}
-              className="flex-1"
-            />
-            {isLoading ? (
-              <Button type="button" onClick={handleStop} size="icon" variant="destructive">
-                <StopIcon weight="bold" />
-              </Button>
-            ) : (
-              <Button type="submit" disabled={!input.trim()} size="icon">
-                <PaperPlaneRightIcon weight="bold" />
-              </Button>
-            )}
+          <form onSubmit={handleSubmit}>
+            <div className="relative rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring">
+              {/* Textarea - padding-bottom creates space for buttons */}
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your response..."
+                disabled={isLoading}
+                className="min-h-[80px] resize-none border-0 focus-visible:ring-0 pb-10"
+                rows={3}
+              />
+
+              {/* Bottom toolbar - positioned inside container */}
+              <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                {/* Left: Reset button */}
+                <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      title="Reset chat"
+                    >
+                      <ArrowsClockwise className="size-3.5" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reset Chat Session?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all chat messages for this feature. Your PRD and feature data will
+                        be preserved.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel asChild>
+                        <Button variant="outline">Cancel</Button>
+                      </AlertDialogCancel>
+                      <AlertDialogAction asChild>
+                        <Button variant="secondary" onClick={handleResetSession}>
+                          Reset Session
+                        </Button>
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Right: Send or Stop */}
+                {isLoading ? (
+                  <button
+                    type="button"
+                    onClick={handleStop}
+                    className="p-1.5 rounded-sm bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                    title="Stop"
+                  >
+                    <StopIcon weight="bold" className="size-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="p-1.5 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Send (Enter)"
+                  >
+                    <PaperPlaneRightIcon weight="bold" className="size-4" />
+                  </button>
+                )}
+              </div>
+            </div>
           </form>
         )}
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Lightbulb } from '@phosphor-icons/react/dist/ssr';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true);
   const [addIdeaOpen, setAddIdeaOpen] = useState(false);
 
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     try {
       const response = await fetch(`/api/projects/${id}`);
       if (response.ok) {
@@ -51,11 +51,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, router]);
 
   useEffect(() => {
     loadProject();
-  }, [id]);
+  }, [loadProject]);
 
   const handleIdeaAdded = () => {
     setAddIdeaOpen(false);

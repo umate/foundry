@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { Project, NewProject } from '@/db/schema';
 

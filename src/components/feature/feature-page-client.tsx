@@ -28,6 +28,11 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
   const [originalMarkdown, setOriginalMarkdown] = useState<string | null>(null);
 
+  // Session reset state - used to remount FeatureChat with fresh state
+  const [messagesKey, setMessagesKey] = useState(0);
+  const [currentMessages, setCurrentMessages] = useState(initialMessages);
+  const [currentInitialIdea, setCurrentInitialIdea] = useState(feature.initialIdea);
+
   // Handle initial PRD generation from chat (markdown)
   const handlePRDGenerated = useCallback((markdown: string) => {
     setPrdContent(markdown);
@@ -41,7 +46,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   }, []);
 
   // Handle pending change from updatePRD tool
-  const handlePendingChange = useCallback((proposed: string, _summary: string) => {
+  const handlePendingChange = useCallback((proposed: string) => {
     setOriginalMarkdown(prdContent);
     setProposedMarkdown(proposed);
   }, [prdContent]);
@@ -59,6 +64,16 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
 
   // Handle rejecting the proposed change
   const handleRejectChange = useCallback(() => {
+    setProposedMarkdown(null);
+    setOriginalMarkdown(null);
+  }, []);
+
+  // Handle session reset - clears messages and remounts chat
+  const handleSessionReset = useCallback(() => {
+    setCurrentMessages([]);
+    setMessagesKey(prev => prev + 1);
+    setCurrentInitialIdea(null); // Clear initialIdea to prevent re-triggering
+    // Also clear any pending changes
     setProposedMarkdown(null);
     setOriginalMarkdown(null);
   }, []);
@@ -154,14 +169,16 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
         {/* Right Panel - Chat (40%) */}
         <div className="w-[40%] bg-white flex flex-col">
           <FeatureChat
+            key={messagesKey}
             projectId={project.id}
             featureId={feature.id}
-            initialIdea={feature.initialIdea || undefined}
-            initialMessages={initialMessages}
+            initialIdea={currentInitialIdea || undefined}
+            initialMessages={currentMessages}
             onPRDGenerated={handlePRDGenerated}
             onPendingChange={handlePendingChange}
             onAcceptChange={handleAcceptChange}
             onRejectChange={handleRejectChange}
+            onSessionReset={handleSessionReset}
             currentPrdMarkdown={prdContent}
             hasPendingChange={proposedMarkdown !== null}
             hasSavedPrd={!!feature.prdMarkdown}

@@ -25,7 +25,7 @@ export const features = pgTable('features', {
   status: text('status').notNull().default('idea'), // 'idea' | 'scoped' | 'ready' | 'done'
   priority: integer('priority').notNull().default(0),
   requestCount: integer('request_count').notNull().default(0),
-  parentId: uuid('parent_id').references((): any => features.id),
+  parentId: uuid('parent_id').references((): typeof features => features.id),
   agentSpec: text('agent_spec'), // Original AI-generated PRD as JSON
   prdMarkdown: text('prd_markdown'), // User-editable PRD as markdown
   initialIdea: text('initial_idea'), // The raw idea text user submitted

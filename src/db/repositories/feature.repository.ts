@@ -1,4 +1,4 @@
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { Feature, NewFeature } from '@/db/schema';
 
