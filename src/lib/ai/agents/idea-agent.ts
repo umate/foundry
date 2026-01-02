@@ -7,35 +7,14 @@ const clarificationOptionSchema = z.object({
   description: z.string().describe("One-line explanation of this option"),
 });
 
-const userStorySchema = z.object({
-  asA: z.string().describe("User role or persona"),
-  iWant: z.string().describe("The action or capability"),
-  soThat: z.string().describe("The benefit or outcome")
-});
-
-const acceptanceCriteriaSchema = z.object({
-  given: z.string().describe("Initial context or state"),
-  when: z.string().describe("Action taken"),
-  then: z.string().describe("Expected outcome")
-});
-
-export const miniPRDSchema = z.object({
-  title: z.string().describe("Feature title (3-7 words)"),
-  problem: z.string().describe("Problem statement (2-4 sentences)"),
-  solution: z.string().describe("High-level approach (2-4 sentences)"),
-  userStories: z.array(userStorySchema).min(1).max(3),
-  acceptanceCriteria: z.array(acceptanceCriteriaSchema).min(2).max(5)
-});
-
-export type MiniPRD = z.infer<typeof miniPRDSchema>;
-
 export const IDEA_AGENT_SYSTEM = `You are a Product Thinking Partner helping refine feature ideas into actionable specs.
 
 ## CRITICAL: Tool Usage Rules
 - ALWAYS use the \`askClarification\` tool to ask questions - NEVER write questions as plain text
 - NEVER assume or pre-fill the user's response - wait for them to select an option
 - NEVER write "Selected Option:" or similar - let the user actually choose
-- When ready to finalize, use the \`generatePRD\` tool
+- When ready to finalize, use the \`generatePRD\` tool to create the initial PRD
+- When user asks to modify an existing PRD, use the \`updatePRD\` tool
 
 ## CRITICAL: Use Project Context
 The PROJECT CONTEXT above is essential. You MUST:
@@ -48,6 +27,31 @@ The PROJECT CONTEXT above is essential. You MUST:
 1. Briefly acknowledge the idea (1-2 sentences of text), then IMMEDIATELY call \`askClarification\` with your first question
 2. After user responds, call \`askClarification\` again OR call \`generatePRD\` if ready
 3. Generate the PRD after 2-3 exchanges max
+
+## PRD Markdown Format
+When generating or updating a PRD, use this markdown structure:
+
+\`\`\`markdown
+# Feature Title
+
+## Problem
+
+2-4 sentences describing the problem this feature solves.
+
+## Solution
+
+2-4 sentences describing the high-level approach.
+
+## User Stories
+
+- As a **[role]**, I want **[action]**, so that **[benefit]**
+- As a **[role]**, I want **[action]**, so that **[benefit]**
+
+## Acceptance Criteria
+
+1. **Given** [context], **When** [action], **Then** [outcome]
+2. **Given** [context], **When** [action], **Then** [outcome]
+\`\`\`
 
 ## Good Questions (Context-Aware)
 Instead of "Who is the main user?", ask things like:
@@ -86,10 +90,23 @@ export const ideaAgentTools = {
   }),
 
   generatePRD: tool({
-    description: "Generate the final mini-PRD when you have enough information",
-    inputSchema: miniPRDSchema,
-    execute: async (prd) => {
-      return { type: "prd" as const, prd };
+    description: "Generate the initial PRD when you have enough information. Output full markdown.",
+    inputSchema: z.object({
+      markdown: z.string().describe("The full PRD in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria"),
+    }),
+    execute: async ({ markdown }) => {
+      return { type: "prd" as const, markdown };
     }
-  })
+  }),
+
+  updatePRD: tool({
+    description: "Propose changes to an existing PRD. User will review the diff before accepting.",
+    inputSchema: z.object({
+      markdown: z.string().describe("The full revised PRD in markdown format"),
+      changeSummary: z.string().describe("Brief description of what changed (1-2 sentences)"),
+    }),
+    execute: async ({ markdown, changeSummary }) => {
+      return { type: "update" as const, markdown, changeSummary };
+    }
+  }),
 };

@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Serif, Space_Mono } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Serif, Space_Mono } from "next/font/google";
 import "./globals.css";
+
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ibm-plex-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
 const ibmPlexSerif = IBM_Plex_Serif({
   variable: "--font-ibm-plex-serif",
@@ -30,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${ibmPlexSerif.variable} ${spaceMono.variable} antialiased`}
+        className={`${ibmPlexSans.variable} ${ibmPlexSerif.variable} ${spaceMono.variable} antialiased`}
       >
         {children}
       </body>

@@ -6,8 +6,6 @@ import { PRDEditor } from './prd-editor';
 import { FeatureChat } from './feature-chat';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from '@phosphor-icons/react/dist/ssr';
-import { prdToMarkdown } from '@/lib/prd-markdown';
-import type { MiniPRD } from '@/lib/ai/agents/idea-agent';
 import type { Feature, FeatureMessage, Project } from '@/db/schema';
 import type { MDXEditorMethods } from '@mdxeditor/editor';
 
@@ -26,9 +24,12 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Handle PRD generation from chat
-  const handlePRDGenerated = useCallback((prd: MiniPRD) => {
-    const markdown = prdToMarkdown(prd);
+  // Diff mode state
+  const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
+  const [originalMarkdown, setOriginalMarkdown] = useState<string | null>(null);
+
+  // Handle initial PRD generation from chat (markdown)
+  const handlePRDGenerated = useCallback((markdown: string) => {
     setPrdContent(markdown);
     setIsLocked(false);
     setHasUnsavedChanges(true);
@@ -37,6 +38,29 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
     if (editorRef.current) {
       editorRef.current.setMarkdown(markdown);
     }
+  }, []);
+
+  // Handle pending change from updatePRD tool
+  const handlePendingChange = useCallback((proposed: string, _summary: string) => {
+    setOriginalMarkdown(prdContent);
+    setProposedMarkdown(proposed);
+  }, [prdContent]);
+
+  // Handle accepting the proposed change
+  const handleAcceptChange = useCallback(() => {
+    if (proposedMarkdown) {
+      setPrdContent(proposedMarkdown);
+      setHasUnsavedChanges(true);
+      // Don't call setMarkdown - the key change will remount the editor with new content
+    }
+    setProposedMarkdown(null);
+    setOriginalMarkdown(null);
+  }, [proposedMarkdown]);
+
+  // Handle rejecting the proposed change
+  const handleRejectChange = useCallback(() => {
+    setProposedMarkdown(null);
+    setOriginalMarkdown(null);
   }, []);
 
   // Handle editor content changes
@@ -111,11 +135,19 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
         <div className="w-[60%] border-r border-border bg-white overflow-y-auto">
           <PRDEditor
             ref={editorRef}
-            content={prdContent}
+            content={proposedMarkdown ?? prdContent}
             onChange={handleContentChange}
             isLocked={isLocked}
             placeholder="The AI will generate a PRD here based on your conversation..."
             saveStatus={saveStatus}
+            diffMarkdown={originalMarkdown ?? undefined}
+            viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
+            projectContext={{
+              name: project.name,
+              description: project.description,
+              stack: project.stack,
+            }}
+            featureTitle={feature.title}
           />
         </div>
 
@@ -127,6 +159,11 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
             initialIdea={feature.initialIdea || undefined}
             initialMessages={initialMessages}
             onPRDGenerated={handlePRDGenerated}
+            onPendingChange={handlePendingChange}
+            onAcceptChange={handleAcceptChange}
+            onRejectChange={handleRejectChange}
+            currentPrdMarkdown={prdContent}
+            hasPendingChange={proposedMarkdown !== null}
             hasSavedPrd={!!feature.prdMarkdown}
           />
         </div>

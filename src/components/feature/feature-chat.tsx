@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaperPlaneRightIcon, StopIcon, CircleIcon } from "@phosphor-icons/react";
 import ReactMarkdown from "react-markdown";
-import type { MiniPRD } from "@/lib/ai/agents/idea-agent";
 import type { FeatureMessage } from "@/db/schema";
+import { PendingChangeCard } from "./pending-change-card";
 
 interface ClarificationOption {
   id: string;
@@ -20,14 +20,26 @@ interface ClarificationOption {
 type MessageContent =
   | { text: string }
   | { toolName: "askClarification"; question: string; options: ClarificationOption[] }
-  | { toolName: "generatePRD"; prd: MiniPRD };
+  | { toolName: "generatePRD"; markdown: string }
+  | { toolName: "updatePRD"; markdown: string; changeSummary: string };
 
 interface FeatureChatProps {
   projectId: string;
   featureId: string;
   initialIdea?: string;
   initialMessages?: FeatureMessage[];
-  onPRDGenerated: (prd: MiniPRD) => void;
+  /** Called when AI generates initial PRD (markdown) */
+  onPRDGenerated: (markdown: string) => void;
+  /** Called when AI proposes changes to existing PRD */
+  onPendingChange: (markdown: string, changeSummary: string) => void;
+  /** Called when user accepts pending change */
+  onAcceptChange: () => void;
+  /** Called when user rejects pending change */
+  onRejectChange: () => void;
+  /** Current PRD markdown to send to AI for context */
+  currentPrdMarkdown?: string;
+  /** Whether there's a pending change awaiting review */
+  hasPendingChange?: boolean;
   hasSavedPrd?: boolean;
 }
 
@@ -38,8 +50,23 @@ interface DisplayMessage {
   parts: Array<
     | { type: "text"; text: string }
     | { type: "tool-askClarification"; question: string; options: ClarificationOption[] }
-    | { type: "tool-generatePRD"; prd: MiniPRD }
+    | { type: "tool-generatePRD"; markdown: string }
+    | { type: "tool-updatePRD"; markdown: string; changeSummary: string }
   >;
+}
+
+// Helper to determine if a message is complete (no pending clarifications)
+function isMessageComplete(message: DisplayMessage, answeredClarifications: Set<string>): boolean {
+  for (let i = 0; i < message.parts.length; i++) {
+    const part = message.parts[i];
+    if (part.type === "tool-askClarification") {
+      const clarificationKey = `${message.id}-${i}`;
+      if (!answeredClarifications.has(clarificationKey)) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 // Tool response wrapper with subtle label
@@ -70,7 +97,13 @@ function dbToDisplayMessages(dbMessages: FeatureMessage[]): DisplayMessage[] {
       } else if (content.toolName === "generatePRD") {
         parts.push({
           type: "tool-generatePRD",
-          prd: content.prd
+          markdown: content.markdown
+        });
+      } else if (content.toolName === "updatePRD") {
+        parts.push({
+          type: "tool-updatePRD",
+          markdown: content.markdown,
+          changeSummary: content.changeSummary
         });
       }
     }
@@ -97,9 +130,18 @@ function extractMessageContent(msg: UIMessage): MessageContent | null {
     if (part.type === "tool-generatePRD") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolPart = part as any;
-      const prd = toolPart.prd || toolPart.output?.prd;
-      if (prd) {
-        return { toolName: "generatePRD" as const, prd };
+      const markdown = toolPart.markdown || toolPart.output?.markdown;
+      if (markdown) {
+        return { toolName: "generatePRD" as const, markdown };
+      }
+    }
+    if (part.type === "tool-updatePRD") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toolPart = part as any;
+      const markdown = toolPart.markdown || toolPart.output?.markdown;
+      const changeSummary = toolPart.changeSummary || toolPart.output?.changeSummary;
+      if (markdown && changeSummary) {
+        return { toolName: "updatePRD" as const, markdown, changeSummary };
       }
     }
   }
@@ -112,10 +154,18 @@ export function FeatureChat({
   initialIdea,
   initialMessages = [],
   onPRDGenerated,
+  onPendingChange,
+  onAcceptChange,
+  onRejectChange,
+  currentPrdMarkdown,
+  hasPendingChange = false,
   hasSavedPrd = false
 }: FeatureChatProps) {
   const [input, setInput] = useState("");
   const [answeredClarifications, setAnsweredClarifications] = useState<Set<string>>(new Set());
+  // Track resolved updatePRD tool calls: key is message-part key, value is resolution status
+  const [resolvedChanges, setResolvedChanges] = useState<Map<string, "accepted" | "rejected">>(new Map());
+  const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
   const hasSentInitialIdeaRef = useRef(false);
   const hasNotifiedPRDRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -128,9 +178,10 @@ export function FeatureChat({
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: `/api/projects/${projectId}/idea-agent`
+        api: `/api/projects/${projectId}/idea-agent`,
+        body: currentPrdMarkdown ? { currentPrdMarkdown } : undefined
       }),
-    [projectId]
+    [projectId, currentPrdMarkdown]
   );
 
   const {
@@ -154,6 +205,23 @@ export function FeatureChat({
   }, [chatMessages, hydratedMessages]);
 
   const isLoading = status === "streaming" || status === "submitted";
+
+  // Rotate thinking phrases while loading
+  const thinkingPhrases = useMemo(
+    () => ["Thinking...", "Analyzing your request...", "Drafting ideas...", "Almost there..."],
+    []
+  );
+  const thinkingPhrase = thinkingPhrases[thinkingPhraseIndex % thinkingPhrases.length];
+
+  useEffect(() => {
+    if (!isLoading) {
+      return;
+    }
+    const interval = setInterval(() => {
+      setThinkingPhraseIndex((prev) => prev + 1);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const handleStop = () => {
     stop();
@@ -219,12 +287,11 @@ export function FeatureChat({
           if (part.type === "tool-generatePRD") {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const toolPart = part as any;
-            console.log("generatePRD tool part:", JSON.stringify(toolPart, null, 2));
-            // Try different possible locations for the PRD data
-            const prd = toolPart.prd || toolPart.output?.prd || toolPart.result?.prd || toolPart.output;
-            if (prd && prd.title) {
+            // Try different possible locations for the markdown data
+            const markdown = toolPart.markdown || toolPart.output?.markdown || toolPart.result?.markdown;
+            if (markdown) {
               hasNotifiedPRDRef.current = true;
-              onPRDGenerated(prd);
+              onPRDGenerated(markdown);
               return;
             }
           }
@@ -232,6 +299,41 @@ export function FeatureChat({
       }
     }
   }, [messages, onPRDGenerated, hasSavedPrd]);
+
+  // Watch for updatePRD tool calls to trigger pending change
+  // IMPORTANT: Only watch NEW messages from chatMessages, not hydrated DB messages
+  // This prevents re-triggering pending change flow for historical updatePRD that was already accepted/rejected
+  const hasNotifiedUpdateRef = useRef(false);
+  useEffect(() => {
+    if (hasNotifiedUpdateRef.current) return;
+    if (hasPendingChange) return; // Already have a pending change
+
+    // Only check NEW messages from chatMessages, not hydrated DB messages
+    for (const message of chatMessages) {
+      if (message.role === "assistant" && message.parts) {
+        for (const part of message.parts) {
+          if (part.type === "tool-updatePRD") {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const toolPart = part as any;
+            const markdown = toolPart.markdown || toolPart.output?.markdown;
+            const changeSummary = toolPart.changeSummary || toolPart.output?.changeSummary;
+            if (markdown && changeSummary) {
+              hasNotifiedUpdateRef.current = true;
+              onPendingChange(markdown, changeSummary);
+              return;
+            }
+          }
+        }
+      }
+    }
+  }, [chatMessages, onPendingChange, hasPendingChange]);
+
+  // Reset update notification ref when pending change is resolved
+  useEffect(() => {
+    if (!hasPendingChange) {
+      hasNotifiedUpdateRef.current = false;
+    }
+  }, [hasPendingChange]);
 
   const handleOptionSelect = (label: string, description: string, clarificationKey: string) => {
     setAnsweredClarifications((prev) => new Set(prev).add(clarificationKey));
@@ -275,10 +377,14 @@ export function FeatureChat({
               seenTexts.add(part.text);
               return true;
             }
-            if (part.type === "tool-askClarification" || part.type === "tool-generatePRD") {
+            if (
+              part.type === "tool-askClarification" ||
+              part.type === "tool-generatePRD" ||
+              part.type === "tool-updatePRD"
+            ) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const toolPart = part as any;
-              const key = `${part.type}-${JSON.stringify(toolPart.question || toolPart.prd?.title || "")}`;
+              const key = `${part.type}-${JSON.stringify(toolPart.question || toolPart.markdown?.slice(0, 50) || "")}`;
               if (seenToolCalls.has(key)) return false;
               seenToolCalls.add(key);
               return true;
@@ -288,7 +394,13 @@ export function FeatureChat({
 
           return (
             <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex gap-3 items-start"}>
-              {message.role === "assistant" && <span className="w-2 h-2 rounded-full shrink-0 mt-2 bg-secondary" />}
+              {message.role === "assistant" && (
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
+                    isMessageComplete(message, answeredClarifications) ? "bg-success" : "bg-secondary"
+                  }`}
+                />
+              )}
               <div className={message.role === "user" ? "max-w-[80%] space-y-3" : "flex-1 space-y-3"}>
                 {uniqueParts.map((part, i) => {
                   if (part.type === "text" && part.text) {
@@ -297,7 +409,7 @@ export function FeatureChat({
                         key={`${message.id}-${i}`}
                         className={message.role === "user" ? "rounded-md py-2 px-3 bg-background" : ""}
                       >
-                        <div className="text-base prose prose-sm max-w-none">
+                        <div className="text-sm prose prose-sm max-w-none">
                           <ReactMarkdown>{part.text}</ReactMarkdown>
                         </div>
                       </div>
@@ -318,7 +430,7 @@ export function FeatureChat({
                       return (
                         <ToolResponse key={clarificationKey} toolName="Clarification Question">
                           <div className="space-y-2">
-                            <span className="text-base">{question}</span>
+                            <span className="text-sm">{question}</span>
                             {!isAnswered && (
                               <div className="space-y-1 py-2">
                                 {options?.map((option) => (
@@ -369,6 +481,51 @@ export function FeatureChat({
                     );
                   }
 
+                  if (part.type === "tool-updatePRD") {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const toolPart = part as any;
+                    const changeSummary =
+                      toolPart.changeSummary || toolPart.output?.changeSummary || "Changes proposed";
+                    const updateKey = `${message.id}-${i}`;
+                    const resolution = resolvedChanges.get(updateKey);
+
+                    // Show status text if already resolved in this session
+                    if (resolution) {
+                      return (
+                        <ToolResponse key={updateKey} toolName="PRD Update">
+                          <span className="text-sm">
+                            {resolution === "accepted" ? "Changes applied" : "Changes discarded"}
+                          </span>
+                        </ToolResponse>
+                      );
+                    }
+
+                    // If no pending change (resolved in previous session or from DB), show as applied
+                    if (!hasPendingChange) {
+                      return (
+                        <ToolResponse key={updateKey} toolName="PRD Update">
+                          <span className="text-sm">Changes applied</span>
+                        </ToolResponse>
+                      );
+                    }
+
+                    // Show pending card with accept/reject buttons
+                    return (
+                      <PendingChangeCard
+                        key={updateKey}
+                        changeSummary={changeSummary}
+                        onAccept={() => {
+                          setResolvedChanges((prev) => new Map(prev).set(updateKey, "accepted"));
+                          onAcceptChange();
+                        }}
+                        onReject={() => {
+                          setResolvedChanges((prev) => new Map(prev).set(updateKey, "rejected"));
+                          onRejectChange();
+                        }}
+                      />
+                    );
+                  }
+
                   return null;
                 })}
               </div>
@@ -378,8 +535,10 @@ export function FeatureChat({
 
         {isLoading && (
           <div className="flex gap-3 items-start">
-            <span className="w-2 h-2 rounded-full shrink-0 mt-2 bg-secondary" />
-            <p className="text-sm pt-0.5 font-bold text-muted-foreground/50">Thinking...</p>
+            <span className="w-2 h-2 rounded-full shrink-0 mt-2 bg-secondary animate-pulse" />
+            <p className="text-sm pt-0.5 font-bold text-muted-foreground/50 animate-thinking-pulse">
+              {thinkingPhrase}
+            </p>
           </div>
         )}
 
@@ -394,25 +553,31 @@ export function FeatureChat({
 
       {/* Input Area */}
       <div className="border-t border-border p-4 bg-white">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your response..."
-            disabled={isLoading}
-            className="flex-1"
-          />
-          {isLoading ? (
-            <Button type="button" onClick={handleStop} size="icon" variant="destructive">
-              <StopIcon weight="bold" />
-            </Button>
-          ) : (
-            <Button type="submit" disabled={!input.trim()} size="icon">
-              <PaperPlaneRightIcon weight="bold" />
-            </Button>
-          )}
-        </form>
+        {hasPendingChange ? (
+          <div className="text-center text-sm text-muted-foreground py-2">
+            Review the proposed changes before continuing
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your response..."
+              disabled={isLoading}
+              className="flex-1"
+            />
+            {isLoading ? (
+              <Button type="button" onClick={handleStop} size="icon" variant="destructive">
+                <StopIcon weight="bold" />
+              </Button>
+            ) : (
+              <Button type="submit" disabled={!input.trim()} size="icon">
+                <PaperPlaneRightIcon weight="bold" />
+              </Button>
+            )}
+          </form>
+        )}
       </div>
     </div>
   );

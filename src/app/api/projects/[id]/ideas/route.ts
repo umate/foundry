@@ -2,16 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { projectRepository } from '@/db/repositories/project.repository';
 import { featureRepository } from '@/db/repositories/feature.repository';
 import { breakdownIdea } from '@/lib/ai/idea-breakdown';
-import { miniPRDSchema } from '@/lib/ai/agents/idea-agent';
 import { z } from 'zod';
 
 const ideaSchema = z.object({
   ideaText: z.string().min(1),
   createOnly: z.boolean().optional(),
-});
-
-const prdSchema = z.object({
-  prd: miniPRDSchema,
 });
 
 export async function POST(
@@ -29,23 +24,6 @@ export async function POST(
         { error: 'Project not found' },
         { status: 404 }
       );
-    }
-
-    // Handle PRD from Idea Agent (new flow)
-    if (body.prd) {
-      const { prd } = prdSchema.parse(body);
-
-      const feature = await featureRepository.create({
-        projectId,
-        title: prd.title,
-        description: prd.problem,
-        status: 'idea' as const,
-        priority: 0,
-        requestCount: 0,
-        agentSpec: JSON.stringify(prd),
-      });
-
-      return NextResponse.json({ feature });
     }
 
     // Handle ideaText flow

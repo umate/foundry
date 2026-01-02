@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
 
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages, currentPrdMarkdown }: { messages: UIMessage[]; currentPrdMarkdown?: string } = await req.json();
 
   if (!messages || !Array.isArray(messages)) {
     return new Response(JSON.stringify({ error: "Messages array required" }), {
@@ -36,7 +36,12 @@ ${project.description || "No description provided."}
 
 You are helping refine features for THIS specific product. Your questions should reference the product's existing capabilities and tech constraints described above.`;
 
-  const systemPrompt = `${projectContext}\n\n${IDEA_AGENT_SYSTEM}`;
+  // Add current PRD context if available
+  const prdContext = currentPrdMarkdown
+    ? `\n\n## CURRENT PRD\n\nThe user has an existing PRD. When they ask for changes, use the \`updatePRD\` tool to propose modifications.\n\n${currentPrdMarkdown}`
+    : '';
+
+  const systemPrompt = `${projectContext}${prdContext}\n\n${IDEA_AGENT_SYSTEM}`;
 
   const result = streamText({
     model: "google/gemini-3-flash",
