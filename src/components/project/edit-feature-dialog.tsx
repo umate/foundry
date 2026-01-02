@@ -24,7 +24,7 @@ interface Feature {
   id: string;
   title: string;
   description: string | null;
-  status: 'idea' | 'scoped' | 'ready' | 'done';
+  status: 'idea' | 'scoped' | 'current' | 'done';
   priority: number;
   requestCount: number;
 }
@@ -122,14 +122,14 @@ export function EditFeatureDialog({
             <label className="text-sm font-medium font-mono uppercase tracking-wider">
               Status
             </label>
-            <Select value={status} onValueChange={(value: "idea" | "scoped" | "ready" | "done") => setStatus(value)}>
+            <Select value={status} onValueChange={(value: "idea" | "scoped" | "current" | "done") => setStatus(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="idea">Idea</SelectItem>
                 <SelectItem value="scoped">Scoped</SelectItem>
-                <SelectItem value="ready">Ready</SelectItem>
+                <SelectItem value="current">Current</SelectItem>
                 <SelectItem value="done">Done</SelectItem>
               </SelectContent>
             </Select>

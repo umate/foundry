@@ -1,0 +1,41 @@
+export type FeatureStatus = 'idea' | 'scoped' | 'current' | 'done';
+
+// Database uses 'ready' but UI shows 'current'
+export type FeatureStatusDb = 'idea' | 'scoped' | 'ready' | 'done';
+
+export interface Feature {
+  id: string;
+  title: string;
+  description: string | null;
+  status: FeatureStatus;
+  priority: number;
+  requestCount: number;
+}
+
+export interface FeaturesByStatus {
+  idea: Feature[];
+  scoped: Feature[];
+  current: Feature[];
+  done: Feature[];
+}
+
+export const STATUS_LABELS: Record<FeatureStatus, string> = {
+  idea: 'Idea',
+  scoped: 'Scoped',
+  current: 'Current',
+  done: 'Done',
+};
+
+export const STATUS_ORDER: FeatureStatus[] = ['idea', 'scoped', 'current', 'done'];
+
+// Map database status to UI status
+export function mapDbStatusToUi(dbStatus: FeatureStatusDb): FeatureStatus {
+  if (dbStatus === 'ready') return 'current';
+  return dbStatus as FeatureStatus;
+}
+
+// Map UI status to database status
+export function mapUiStatusToDb(uiStatus: FeatureStatus): FeatureStatusDb {
+  if (uiStatus === 'current') return 'ready';
+  return uiStatus as FeatureStatusDb;
+}

@@ -12,7 +12,7 @@ interface Feature {
   id: string;
   title: string;
   description: string | null;
-  status: 'idea' | 'scoped' | 'ready' | 'done';
+  status: 'idea' | 'scoped' | 'current' | 'done';
   priority: number;
   requestCount: number;
 }

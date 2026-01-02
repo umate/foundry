@@ -5,11 +5,18 @@ import { z } from 'zod';
 const updateFeatureSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
-  status: z.enum(['idea', 'scoped', 'ready', 'done']).optional(),
+  // Accept 'current' from UI but store as 'ready' in database
+  status: z.enum(['idea', 'scoped', 'current', 'ready', 'done']).optional(),
   priority: z.number().int().optional(),
   requestCount: z.number().int().min(0).optional(),
   agentSpec: z.string().optional(),
 });
+
+// Map 'current' to 'ready' for database storage
+function mapStatusToDb(status: string | undefined): string | undefined {
+  if (status === 'current') return 'ready';
+  return status;
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -20,7 +27,10 @@ export async function PATCH(
     const body = await request.json();
     const data = updateFeatureSchema.parse(body);
 
-    const feature = await featureRepository.update(id, data);
+    const feature = await featureRepository.update(id, {
+      ...data,
+      status: mapStatusToDb(data.status),
+    });
 
     if (!feature) {
       return NextResponse.json(

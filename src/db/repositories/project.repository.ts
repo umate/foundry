@@ -20,7 +20,7 @@ export class ProjectRepository {
     });
   }
 
-  async findManyWithFeatureCounts(): Promise<Array<Project & { featureCounts: { idea: number; scoped: number; ready: number; done: number } }>> {
+  async findManyWithFeatureCounts(): Promise<Array<Project & { featureCounts: { idea: number; scoped: number; current: number; done: number } }>> {
     const projects = await db.query.projects.findMany({
       orderBy: (projects, { desc }) => [desc(projects.createdAt)],
     });
@@ -34,7 +34,7 @@ export class ProjectRepository {
         const featureCounts = {
           idea: features.filter(f => f.status === 'idea').length,
           scoped: features.filter(f => f.status === 'scoped').length,
-          ready: features.filter(f => f.status === 'ready').length,
+          current: features.filter(f => f.status === 'ready').length,
           done: features.filter(f => f.status === 'done').length,
         };
 

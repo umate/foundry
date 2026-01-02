@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (projectId: string) => void;
 }
 
 export function CreateProjectDialog({
@@ -50,11 +50,13 @@ export function CreateProjectDialog({
         throw new Error('Failed to create project');
       }
 
+      const project = await response.json();
+
       // Reset form
       setName('');
       setDescription('');
       setStack('');
-      onSuccess();
+      onSuccess(project.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {

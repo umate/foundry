@@ -23,7 +23,7 @@ export class FeatureRepository {
   async findByProjectIdGrouped(projectId: string): Promise<{
     idea: Feature[];
     scoped: Feature[];
-    ready: Feature[];
+    current: Feature[];
     done: Feature[];
   }> {
     const features = await this.findByProjectId(projectId);
@@ -31,7 +31,7 @@ export class FeatureRepository {
     return {
       idea: features.filter(f => f.status === 'idea'),
       scoped: features.filter(f => f.status === 'scoped'),
-      ready: features.filter(f => f.status === 'ready'),
+      current: features.filter(f => f.status === 'ready'),
       done: features.filter(f => f.status === 'done'),
     };
   }

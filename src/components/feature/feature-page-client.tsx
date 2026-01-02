@@ -19,6 +19,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   const router = useRouter();
   const editorRef = useRef<MDXEditorMethods>(null);
 
+  const [currentTitle, setCurrentTitle] = useState(feature.title);
   const [prdContent, setPrdContent] = useState(feature.prdMarkdown || '');
   const [isLocked, setIsLocked] = useState(!feature.prdMarkdown);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -120,6 +121,16 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
     return () => clearTimeout(timer);
   }, [prdContent, hasUnsavedChanges, isLocked, handleSave]);
 
+  // Generate AI title on first view
+  useEffect(() => {
+    if (!feature.initialIdea) return;
+
+    fetch(`/api/features/${feature.id}/generate-title`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => data.title && setCurrentTitle(data.title))
+      .catch(() => {}); // Silent failure
+  }, [feature.id, feature.initialIdea]);
+
   return (
     <div className="h-screen bg-[#E5E1D8] flex flex-col overflow-hidden">
       {/* Header */}
@@ -138,7 +149,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
             <span className="text-sm text-muted-foreground">{project.name}</span>
             <span className="text-muted-foreground">/</span>
             <h1 className="font-mono text-sm font-bold uppercase tracking-wider">
-              {feature.title || 'New Feature'}
+              {currentTitle || 'New Feature'}
             </h1>
           </div>
         </div>

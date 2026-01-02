@@ -2,22 +2,13 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Lightbulb } from '@phosphor-icons/react/dist/ssr';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { FeatureList } from '@/components/project/feature-list';
+import { AppHeader } from '@/components/layout/app-header';
+import { PanelBoard } from '@/components/project/panel-board';
 import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
+import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
+import { FeaturesByStatus, Feature, mapDbStatusToUi } from '@/types/feature';
 
-interface Feature {
-  id: string;
-  title: string;
-  description: string | null;
-  status: 'idea' | 'scoped' | 'ready' | 'done';
-  priority: number;
-  requestCount: number;
-}
-
-interface Project {
+interface ProjectData {
   id: string;
   name: string;
   description: string | null;
@@ -25,24 +16,48 @@ interface Project {
   features: {
     idea: Feature[];
     scoped: Feature[];
-    ready: Feature[];
+    current: Feature[];
     done: Feature[];
   };
 }
 
-export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ProjectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
-  const [project, setProject] = useState<Project | null>(null);
+  const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [addIdeaOpen, setAddIdeaOpen] = useState(false);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
 
   const loadProject = useCallback(async () => {
     try {
       const response = await fetch(`/api/projects/${id}`);
       if (response.ok) {
         const data = await response.json();
-        setProject(data);
+        // Map feature statuses from DB to UI format
+        const mappedFeatures: FeaturesByStatus = {
+          idea: data.features.idea.map((f: Feature) => ({
+            ...f,
+            status: mapDbStatusToUi(f.status as 'idea' | 'scoped' | 'ready' | 'done'),
+          })),
+          scoped: data.features.scoped.map((f: Feature) => ({
+            ...f,
+            status: mapDbStatusToUi(f.status as 'idea' | 'scoped' | 'ready' | 'done'),
+          })),
+          current: data.features.current.map((f: Feature) => ({
+            ...f,
+            status: mapDbStatusToUi(f.status as 'idea' | 'scoped' | 'ready' | 'done'),
+          })),
+          done: data.features.done.map((f: Feature) => ({
+            ...f,
+            status: mapDbStatusToUi(f.status as 'idea' | 'scoped' | 'ready' | 'done'),
+          })),
+        };
+        setProject({ ...data, features: mappedFeatures });
       } else if (response.status === 404) {
         router.push('/');
       }
@@ -66,10 +81,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     loadProject();
   };
 
+  const handleProjectCreated = (newProjectId: string) => {
+    setCreateProjectOpen(false);
+    router.push(`/projects/${newProjectId}`);
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#E5E1D8] flex items-center justify-center">
-        <p className="font-mono text-black/60">Loading...</p>
+      <div className="h-screen flex flex-col bg-background">
+        <AppHeader
+          onAddIdea={() => {}}
+          onCreateProject={() => {}}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="font-mono text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -78,56 +104,32 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     return null;
   }
 
-  const totalFeatures = Object.values(project.features).flat().length;
-
   return (
-    <div className="min-h-screen bg-[#E5E1D8] p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => router.push('/')}
-            className="mb-4"
-          >
-            <ArrowLeft weight="bold" className="mr-2" />
-            Back to Projects
-          </Button>
+    <div className="h-screen flex flex-col bg-background">
+      <AppHeader
+        currentProjectId={project.id}
+        currentProjectName={project.name}
+        onAddIdea={() => setAddIdeaOpen(true)}
+        onCreateProject={() => setCreateProjectOpen(true)}
+      />
 
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="font-mono text-4xl font-bold text-black uppercase tracking-wider mb-2">
-                {project.name}
-              </h1>
-              {project.description && (
-                <p className="text-lg text-black/70 mb-2">{project.description}</p>
-              )}
-              {project.stack && (
-                <p className="text-sm text-black/60">Tech stack: {project.stack}</p>
-              )}
-              <div className="mt-2">
-                <Badge variant="outline">{totalFeatures} features</Badge>
-              </div>
-            </div>
-
-            <Button onClick={() => setAddIdeaOpen(true)}>
-              <Lightbulb weight="bold" className="mr-2" />
-              Add Idea
-            </Button>
-          </div>
-        </div>
-
-        <FeatureList
-          features={project.features}
-          projectId={project.id}
-          onFeatureUpdated={handleFeatureUpdated}
-        />
-      </div>
+      <PanelBoard
+        features={project.features}
+        projectId={project.id}
+        onFeatureUpdated={handleFeatureUpdated}
+      />
 
       <AddIdeaDialog
         open={addIdeaOpen}
         onOpenChange={setAddIdeaOpen}
         projectId={project.id}
         onSuccess={handleIdeaAdded}
+      />
+
+      <CreateProjectDialog
+        open={createProjectOpen}
+        onOpenChange={setCreateProjectOpen}
+        onSuccess={handleProjectCreated}
       />
     </div>
   );

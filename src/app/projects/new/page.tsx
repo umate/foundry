@@ -1,0 +1,51 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
+
+export default function NewProjectPage() {
+  const router = useRouter();
+  const [open, setOpen] = useState(true);
+
+  const handleSuccess = (projectId: string) => {
+    router.push(`/projects/${projectId}`);
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      // If dialog is closed without creating, go back
+      router.back();
+    }
+  };
+
+  return (
+    <div className="h-screen flex flex-col bg-background">
+      {/* Simple header for context */}
+      <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center shrink-0">
+        <span className="font-mono text-base font-bold uppercase tracking-wider">
+          Foundry
+        </span>
+      </header>
+
+      {/* Centered content area with dialog */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="font-mono text-2xl font-bold uppercase tracking-wider mb-2">
+            Welcome to Foundry
+          </h1>
+          <p className="text-muted-foreground mb-4">
+            Create your first project to get started
+          </p>
+        </div>
+      </div>
+
+      <CreateProjectDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        onSuccess={handleSuccess}
+      />
+    </div>
+  );
+}
