@@ -98,9 +98,17 @@ export function CompactFeatureRow({
 
   const actionLabel = getActionLabel();
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('featureId', feature.id);
+    e.dataTransfer.setData('sourceStatus', feature.status);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
     <div
-      className="h-8 px-3 flex items-center gap-2 cursor-pointer hover:bg-card transition-colors group"
+      draggable
+      onDragStart={handleDragStart}
+      className="h-8 px-3 flex items-center gap-2 cursor-grab active:cursor-grabbing hover:bg-card transition-colors group"
       onClick={handleRowClick}
     >
       {/* Type Icon */}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { GearSix, Lightbulb, Target, Play, CheckCircle } from '@phosphor-icons/react';
 import { Feature, FeatureStatus, STATUS_LABELS } from '@/types/feature';
 import { CompactFeatureRow } from './compact-feature-row';
@@ -30,6 +31,39 @@ export function StatusPanel({
   projectId,
   onFeatureUpdated,
 }: StatusPanelProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only set to false if we're leaving the drop zone entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const featureId = e.dataTransfer.getData('featureId');
+    const sourceStatus = e.dataTransfer.getData('sourceStatus');
+
+    if (sourceStatus === status) return; // Same column, no change
+
+    await fetch(`/api/features/${featureId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+
+    onFeatureUpdated();
+  };
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-card/30">
       {/* Panel Header - Pivotal Tracker style */}
@@ -48,8 +82,13 @@ export function StatusPanel({
         </button>
       </div>
 
-      {/* Feature List - scrollable */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Feature List - scrollable drop zone */}
+      <div
+        className={`flex-1 overflow-y-auto transition-colors ${isDragOver ? 'bg-secondary/10' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {features.length === 0 ? (
           <div className="p-4 text-center">
             <p className="text-xs text-muted-foreground font-mono">
