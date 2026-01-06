@@ -6,6 +6,7 @@ import { Lightbulb, Play, Check, Target, CheckCircle } from '@phosphor-icons/rea
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Feature, FeatureStatus } from '@/types/feature';
+import { useDrag } from './drag-context';
 
 interface CompactFeatureRowProps {
   feature: Feature;
@@ -33,6 +34,7 @@ export function CompactFeatureRow({
 }: CompactFeatureRowProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { setIsDragging, setDraggedFeatureId } = useDrag();
 
   const handleRowClick = () => {
     router.push(`/projects/${projectId}/features/${feature.id}`);
@@ -100,14 +102,23 @@ export function CompactFeatureRow({
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('featureId', feature.id);
+    e.dataTransfer.setData('featureTitle', feature.title);
     e.dataTransfer.setData('sourceStatus', feature.status);
     e.dataTransfer.effectAllowed = 'move';
+    setIsDragging(true);
+    setDraggedFeatureId(feature.id);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedFeatureId(null);
   };
 
   return (
     <div
       draggable
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       className="h-8 px-3 flex items-center gap-2 cursor-grab active:cursor-grabbing hover:bg-card transition-colors group"
       onClick={handleRowClick}
     >
@@ -115,7 +126,7 @@ export function CompactFeatureRow({
       {getFeatureIcon(feature.status)}
 
       {/* Title - truncate */}
-      <span className="flex-1 font-mono text-sm truncate">{feature.title}</span>
+      <span className="flex-1 font-sans-serif text-sm truncate">{feature.title}</span>
 
       {/* Request Count Badge (if any) */}
       {feature.requestCount > 0 && (

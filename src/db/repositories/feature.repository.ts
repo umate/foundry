@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { Feature, NewFeature } from '@/db/schema';
 
@@ -11,7 +11,10 @@ export class FeatureRepository {
 
   async findByProjectId(projectId: string): Promise<Feature[]> {
     return await db.query.features.findMany({
-      where: eq(schema.features.projectId, projectId),
+      where: and(
+        eq(schema.features.projectId, projectId),
+        ne(schema.features.status, 'archived')
+      ),
       orderBy: (features, { asc, desc }) => [
         asc(features.status),
         desc(features.priority),

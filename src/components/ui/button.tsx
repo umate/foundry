@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { CommandIcon } from "@phosphor-icons/react/dist/ssr"
 
 import { cn } from "@/lib/utils"
 
@@ -36,15 +37,41 @@ const buttonVariants = cva(
   }
 )
 
+type ShortcutKey = "enter" | "escape" | "s" | "n" | "d" | "e"
+
+interface ShortcutConfig {
+  key: ShortcutKey
+  meta?: boolean
+  ctrl?: boolean
+  shift?: boolean
+}
+
+function ShortcutIndicator({ shortcut }: { shortcut: ShortcutConfig }) {
+  const keyLabel = shortcut.key === "enter" ? "Enter" : shortcut.key.toUpperCase()
+
+  return (
+    <span className="inline-flex items-center gap-1 ml-2 opacity-50">
+      {(shortcut.meta || shortcut.ctrl) && (
+        <CommandIcon className="size-4" weight="bold" />
+      )}
+      {shortcut.shift && <span>⇧</span>}
+      <span>{keyLabel}</span>
+    </span>
+  )
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
   asChild = false,
+  shortcut,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    shortcut?: ShortcutConfig
   }) {
   const Comp = asChild ? Slot : "button"
 
@@ -55,8 +82,11 @@ function Button({
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {children}
+      {shortcut && <ShortcutIndicator shortcut={shortcut} />}
+    </Comp>
   )
 }
 
-export { Button, buttonVariants }
+export { Button, buttonVariants, type ShortcutConfig }

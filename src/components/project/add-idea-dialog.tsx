@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -23,9 +23,17 @@ interface AddIdeaDialogProps {
 
 export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess }: AddIdeaDialogProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [ideaText, setIdeaText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && e.metaKey && ideaText.trim() && !loading) {
+      e.preventDefault();
+      formRef.current?.requestSubmit();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,15 +88,16 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess }: AddI
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Textarea
               value={ideaText}
               onChange={(e) => setIdeaText(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="I want to add a feature that..."
-              rows={6}
+              rows={8}
               required
-              className="resize-none"
+              className="resize-none min-h-[160px] max-h-[240px] overflow-y-auto"
             />
             <p className="text-xs text-muted-foreground">
               Be as detailed or brief as you like. The AI will help you flesh it out.
@@ -105,7 +114,11 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess }: AddI
             <Button type="button" variant="outline" onClick={handleCancel} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !ideaText.trim()}>
+            <Button
+              type="submit"
+              disabled={loading || !ideaText.trim()}
+              shortcut={{ key: "enter", meta: true }}
+            >
               {loading ? "Creating..." : "Start Refining"}
             </Button>
           </DialogFooter>

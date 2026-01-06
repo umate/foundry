@@ -1,7 +1,8 @@
 export type FeatureStatus = 'idea' | 'scoped' | 'current' | 'done';
 
 // Database uses 'ready' but UI shows 'current'
-export type FeatureStatusDb = 'idea' | 'scoped' | 'ready' | 'done';
+// 'archived' is used for soft-deleted features (not shown in UI)
+export type FeatureStatusDb = 'idea' | 'scoped' | 'ready' | 'done' | 'archived';
 
 export interface Feature {
   id: string;

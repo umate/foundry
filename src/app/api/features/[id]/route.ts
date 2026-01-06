@@ -6,7 +6,8 @@ const updateFeatureSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
   // Accept 'current' from UI but store as 'ready' in database
-  status: z.enum(['idea', 'scoped', 'current', 'ready', 'done']).optional(),
+  // 'archived' is used for soft-deleting features via trash drop zone
+  status: z.enum(['idea', 'scoped', 'current', 'ready', 'done', 'archived']).optional(),
   priority: z.number().int().optional(),
   requestCount: z.number().int().min(0).optional(),
   agentSpec: z.string().optional(),

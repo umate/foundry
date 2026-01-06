@@ -23,7 +23,7 @@ export const features = pgTable('features', {
   projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
-  status: text('status').notNull().default('idea'), // 'idea' | 'scoped' | 'ready' | 'done'
+  status: text('status').notNull().default('idea'), // 'idea' | 'scoped' | 'ready' | 'done' | 'archived'
   priority: integer('priority').notNull().default(0),
   requestCount: integer('request_count').notNull().default(0),
   parentId: uuid('parent_id'),
