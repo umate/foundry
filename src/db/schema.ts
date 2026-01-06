@@ -13,6 +13,7 @@ export const projects = pgTable('projects', {
   name: text('name').notNull(),
   description: text('description'),
   stack: text('stack'),
+  widgetApiKey: text('widget_api_key'), // API key for embeddable feedback widget
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

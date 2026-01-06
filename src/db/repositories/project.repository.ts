@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { Project, NewProject } from '@/db/schema';
+import { randomBytes } from 'crypto';
 
 export class ProjectRepository {
   async findById(id: string): Promise<Project | null> {
@@ -78,6 +79,26 @@ export class ProjectRepository {
       .returning();
 
     return result.length > 0;
+  }
+
+  async findByApiKey(apiKey: string): Promise<Project | null> {
+    return await db.query.projects.findFirst({
+      where: eq(schema.projects.widgetApiKey, apiKey),
+    }) ?? null;
+  }
+
+  async regenerateApiKey(id: string): Promise<string | null> {
+    const newKey = `fnd_${randomBytes(16).toString('hex')}`;
+    const result = await db
+      .update(schema.projects)
+      .set({
+        widgetApiKey: newKey,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.projects.id, id))
+      .returning();
+
+    return result[0]?.widgetApiKey ?? null;
   }
 }
 

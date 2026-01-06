@@ -1,0 +1,245 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { CopyIcon, ArrowsClockwiseIcon } from '@phosphor-icons/react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+
+interface ProjectBase {
+  id: string;
+  name: string;
+  description: string | null;
+  stack: string | null;
+  widgetApiKey: string | null;
+}
+
+interface ProjectSettingsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  project: ProjectBase;
+  onUpdate: (project: ProjectBase) => void;
+}
+
+export function ProjectSettingsDialog({
+  open,
+  onOpenChange,
+  project,
+  onUpdate,
+}: ProjectSettingsDialogProps) {
+  const [name, setName] = useState(project.name);
+  const [description, setDescription] = useState(project.description || '');
+  const [stack, setStack] = useState(project.stack || '');
+  const [apiKey, setApiKey] = useState(project.widgetApiKey || '');
+  const [loading, setLoading] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [copied, setCopied] = useState<'key' | 'embed' | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setName(project.name);
+    setDescription(project.description || '');
+    setStack(project.stack || '');
+    setApiKey(project.widgetApiKey || '');
+  }, [project]);
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          stack: stack.trim() || null,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update project');
+
+      const updated = await response.json();
+      onUpdate(updated);
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegenerateKey = async () => {
+    setRegenerating(true);
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regenerateApiKey: true }),
+      });
+
+      if (!response.ok) throw new Error('Failed to regenerate key');
+
+      const updated = await response.json();
+      setApiKey(updated.widgetApiKey || '');
+      onUpdate(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to regenerate');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, type: 'key' | 'embed') => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const embedCode = apiKey
+    ? `<script>
+window.FOUNDRY_API_KEY = "${apiKey}";
+</script>
+<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget/foundry-widget.js"></script>`
+    : '';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-mono uppercase tracking-wider">
+            Project Settings
+          </DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="overview" className="mt-2">
+          <TabsList className="w-full">
+            <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
+            <TabsTrigger value="widget" className="flex-1">Widget</TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium font-mono uppercase tracking-wider">
+                Name
+              </label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Project name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium font-mono uppercase tracking-wider">
+                Description
+              </label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What is this project about?"
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium font-mono uppercase tracking-wider">
+                Tech Stack
+              </label>
+              <Input
+                value={stack}
+                onChange={(e) => setStack(e.target.value)}
+                placeholder="Next.js, React, TypeScript, etc."
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleSave} disabled={loading || !name.trim()}>
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* Widget Tab */}
+          <TabsContent value="widget" className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Embed a feedback widget on your site to collect user ideas.
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium font-mono uppercase tracking-wider">
+                API Key
+              </label>
+              <div className="flex gap-2">
+                <code className="flex-1 bg-muted px-3 py-2 rounded-md text-sm font-mono truncate">
+                  {apiKey || 'No key generated'}
+                </code>
+                {apiKey && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(apiKey, 'key')}
+                  >
+                    <CopyIcon weight="bold" className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleRegenerateKey}
+                  disabled={regenerating}
+                >
+                  <ArrowsClockwiseIcon
+                    weight="bold"
+                    className={`h-4 w-4 ${regenerating ? 'animate-spin' : ''}`}
+                  />
+                </Button>
+              </div>
+              {copied === 'key' && (
+                <p className="text-xs text-green-600">Copied!</p>
+              )}
+            </div>
+
+            {apiKey && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium font-mono uppercase tracking-wider">
+                  Embed Code
+                </label>
+                <div className="relative">
+                  <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto whitespace-pre-wrap">
+                    {embedCode}
+                  </pre>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(embedCode, 'embed')}
+                  >
+                    <CopyIcon weight="bold" className="h-3 w-3 mr-1" />
+                    {copied === 'embed' ? 'Copied!' : 'Copy'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -6,6 +6,7 @@ import { AppHeader } from '@/components/layout/app-header';
 import { PanelBoard } from '@/components/project/panel-board';
 import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
 import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
+import { ProjectSettingsDialog } from '@/components/project/project-settings-dialog';
 import { FeaturesByStatus, Feature, mapDbStatusToUi } from '@/types/feature';
 
 interface ProjectData {
@@ -13,6 +14,7 @@ interface ProjectData {
   name: string;
   description: string | null;
   stack: string | null;
+  widgetApiKey: string | null;
   features: {
     idea: Feature[];
     scoped: Feature[];
@@ -32,6 +34,7 @@ export default function ProjectPage({
   const [loading, setLoading] = useState(true);
   const [addIdeaOpen, setAddIdeaOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const loadProject = useCallback(async () => {
     try {
@@ -86,6 +89,10 @@ export default function ProjectPage({
     router.push(`/projects/${newProjectId}`);
   };
 
+  const handleProjectUpdated = (updated: { id: string; name: string; description: string | null; stack: string | null; widgetApiKey: string | null }) => {
+    setProject(prev => prev ? { ...prev, ...updated } : prev);
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex flex-col bg-background">
@@ -111,6 +118,7 @@ export default function ProjectPage({
         currentProjectName={project.name}
         onAddIdea={() => setAddIdeaOpen(true)}
         onCreateProject={() => setCreateProjectOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       <PanelBoard
@@ -130,6 +138,13 @@ export default function ProjectPage({
         open={createProjectOpen}
         onOpenChange={setCreateProjectOpen}
         onSuccess={handleProjectCreated}
+      />
+
+      <ProjectSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        project={project}
+        onUpdate={handleProjectUpdated}
       />
     </div>
   );

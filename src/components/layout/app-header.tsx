@@ -1,6 +1,6 @@
 "use client";
 
-import { PlusIcon } from "@phosphor-icons/react";
+import { PlusIcon, GearIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
 import { ThemeToggle } from "./theme-toggle";
@@ -11,9 +11,10 @@ interface AppHeaderProps {
   featureName?: string;
   onAddIdea: () => void;
   onCreateProject: () => void;
+  onOpenSettings?: () => void;
 }
 
-export function AppHeader({ currentProjectId, currentProjectName, featureName, onAddIdea, onCreateProject }: AppHeaderProps) {
+export function AppHeader({ currentProjectId, currentProjectName, featureName, onAddIdea, onCreateProject, onOpenSettings }: AppHeaderProps) {
   return (
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
       {/* Left: Logo + Project Selector + Feature Breadcrumb */}
@@ -38,6 +39,11 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
         <ThemeToggle />
+        {currentProjectId && onOpenSettings && (
+          <Button variant="ghost" size="icon" onClick={onOpenSettings}>
+            <GearIcon weight="bold" className="h-4 w-4" />
+          </Button>
+        )}
         <Button variant="outline" onClick={onAddIdea} size="sm">
           <PlusIcon weight="bold" />
           Add Idea
