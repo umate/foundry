@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Lightbulb } from '@phosphor-icons/react/dist/ssr';
+  DialogTitle
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Lightbulb } from "@phosphor-icons/react/dist/ssr";
 
 interface AddIdeaDialogProps {
   open: boolean;
@@ -21,54 +21,49 @@ interface AddIdeaDialogProps {
   onSuccess?: () => void;
 }
 
-export function AddIdeaDialog({
-  open,
-  onOpenChange,
-  projectId,
-  onSuccess,
-}: AddIdeaDialogProps) {
+export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess }: AddIdeaDialogProps) {
   const router = useRouter();
-  const [ideaText, setIdeaText] = useState('');
+  const [ideaText, setIdeaText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       const response = await fetch(`/api/projects/${projectId}/ideas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ideaText: ideaText.trim(),
-          createOnly: true, // Create feature without AI processing
-        }),
+          createOnly: true // Create feature without AI processing
+        })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create feature');
+        throw new Error("Failed to create feature");
       }
 
       const data = await response.json();
 
       // Reset form and close dialog
-      setIdeaText('');
+      setIdeaText("");
       onOpenChange(false);
       onSuccess?.();
 
       // Redirect to feature page
       router.push(`/projects/${projectId}/features/${data.featureId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create feature');
+      setError(err instanceof Error ? err.message : "Failed to create feature");
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    setIdeaText('');
-    setError('');
+    setIdeaText("");
+    setError("");
     onOpenChange(false);
   };
 
@@ -87,14 +82,11 @@ export function AddIdeaDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium font-mono uppercase tracking-wider">
-              What&apos;s your idea? *
-            </label>
             <Textarea
               value={ideaText}
               onChange={(e) => setIdeaText(e.target.value)}
               placeholder="I want to add a feature that..."
-              rows={4}
+              rows={6}
               required
               className="resize-none"
             />
@@ -110,16 +102,11 @@ export function AddIdeaDialog({
           )}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !ideaText.trim()}>
-              {loading ? 'Creating...' : 'Start Refining'}
+              {loading ? "Creating..." : "Start Refining"}
             </Button>
           </DialogFooter>
         </form>

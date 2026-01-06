@@ -158,7 +158,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
       {/* Main Content - Split Layout */}
       <main className="flex-1 flex min-h-0">
         {/* Left Panel - Editor (60%) */}
-        <div className="w-[60%] border-r border-border bg-white overflow-y-auto">
+        <div className="w-[60%] border-r border-border bg-card overflow-y-auto">
           <PRDEditor
             ref={editorRef}
             content={proposedMarkdown ?? prdContent}
@@ -178,7 +178,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
         </div>
 
         {/* Right Panel - Chat (40%) */}
-        <div className="w-[40%] bg-white flex flex-col">
+        <div className="w-[40%] bg-card flex flex-col">
           <FeatureChat
             key={messagesKey}
             projectId={project.id}

@@ -407,7 +407,7 @@ export function FeatureChat({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-card">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && !initialIdea && (
@@ -610,7 +610,7 @@ export function FeatureChat({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border p-3 bg-white">
+      <div className="border-t border-border p-3 bg-card">
         {hasPendingChange ? (
           <div className="text-center text-sm text-muted-foreground py-2">
             Review the proposed changes before continuing

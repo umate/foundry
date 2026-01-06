@@ -17,7 +17,7 @@ export default function DesignSystemPage() {
   const [switchChecked, setSwitchChecked] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-5xl mx-auto space-y-12">
         {/* Header */}
         <div className="space-y-2">

@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { Lightbulb } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
-import { ProjectSelector } from './project-selector';
+import { PlusIcon } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/button";
+import { ProjectSelector } from "./project-selector";
+import { ThemeToggle } from "./theme-toggle";
 
 interface AppHeaderProps {
   currentProjectId?: string;
@@ -11,19 +12,12 @@ interface AppHeaderProps {
   onCreateProject: () => void;
 }
 
-export function AppHeader({
-  currentProjectId,
-  currentProjectName,
-  onAddIdea,
-  onCreateProject,
-}: AppHeaderProps) {
+export function AppHeader({ currentProjectId, currentProjectName, onAddIdea, onCreateProject }: AppHeaderProps) {
   return (
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
       {/* Left: Logo + Project Selector */}
       <div className="flex items-center gap-3">
-        <span className="font-mono text-base font-bold uppercase tracking-wider">
-          Foundry
-        </span>
+        <span className="font-mono text-base font-bold uppercase tracking-wider">Foundry</span>
         <span className="text-foreground/30">|</span>
         <ProjectSelector
           currentProjectId={currentProjectId}
@@ -34,8 +28,9 @@ export function AppHeader({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
-        <Button onClick={onAddIdea} size="sm">
-          <Lightbulb weight="bold" />
+        <ThemeToggle />
+        <Button variant="outline" onClick={onAddIdea} size="sm">
+          <PlusIcon weight="bold" />
           Add Idea
         </Button>
       </div>

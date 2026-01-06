@@ -21,6 +21,7 @@ bun db:studio                            # Open Drizzle Studio (visual DB browse
 This is a Next.js 16 App Router project using React 19 with a custom ShadCN UI design system.
 
 ### Stack
+
 - **Framework**: Next.js 16 with App Router (`src/app/`)
 - **UI Components**: ShadCN UI with heavy customizations (`src/components/ui/`)
 - **Styling**: Tailwind CSS v4 with CSS variables for theming
@@ -29,9 +30,11 @@ This is a Next.js 16 App Router project using React 19 with a custom ShadCN UI d
 - **Runtime**: Bun
 
 ### Path Aliases
+
 - `@/*` maps to `./src/*`
 
 ### Database Structure
+
 - **Schema**: `src/db/schema.ts` (all table definitions)
 - **Client**: `src/db/index.ts` (singleton database connection)
 - **Repositories**: `src/db/repositories/` (data access layer)
@@ -42,21 +45,21 @@ This is a Next.js 16 App Router project using React 19 with a custom ShadCN UI d
 The UI follows a retro/industrial aesthetic that differs significantly from default ShadCN. See [docs/design-system.md](docs/design-system.md) for full details.
 
 ### Key Styling Rules
+
 - **Fonts**: Space Mono (monospace) throughout; use `font-mono uppercase tracking-wider` for buttons/badges/tabs
 - **Colors**: Sage/olive palette with black primary and orange (`#E85102`) secondary accent
 - **Shapes**: Rectangular aesthetic - use `rounded-sm` or `rounded-md`, avoid `rounded-full`
 - **Borders**: `border-2` on buttons, thin borders on inputs
 
 ### Component Conventions
+
 - Buttons: uppercase, monospace, `border-2` matching bg color, hover uses opacity (`/80`)
 - Badges: `rounded-sm` (not pill-shaped), uppercase monospace
 - Toggle controls (checkbox, switch, radio): rectangular `rounded-sm` instead of rounded
 
 ### Icons
-```tsx
-import { User, Gear, Plus } from "@phosphor-icons/react";
-<Button><Plus weight="bold" /> Create</Button>  // Use weight="bold" in buttons
-```
+
+Use Phosphor Icons (NOT Lucide): `import { PlusIcon } from "@phosphor-icons/react"`. Use `weight="bold"` in buttons, use `Icon` at the end of the icon name.
 
 ## Adding ShadCN Components
 
@@ -79,6 +82,7 @@ Run `/db` skill for full patterns. **CRITICAL: Always use repositories, never ac
 For AI features, use AI SDK v6 patterns. Run `/ai-sdk-v6` skill for full docs.
 
 ### Key v6 Changes
+
 - `inputSchema` (not `parameters`) for tools
 - `stopWhen: stepCountIs(10)` (not `maxSteps`)
 - `toUIMessageStreamResponse()` (not `toAIStreamResponse()`)
@@ -89,16 +93,16 @@ For AI features, use AI SDK v6 patterns. Run `/ai-sdk-v6` skill for full docs.
 ```typescript
 // Tool definition
 const myTool = tool({
-  description: 'Tool description',
+  description: "Tool description",
   inputSchema: z.object({ query: z.string() }),
-  execute: async ({ query }) => ({ result: '...' }),
+  execute: async ({ query }) => ({ result: "..." })
 });
 
 // Agent
 const agent = new ToolLoopAgent({
-  model: 'anthropic/claude-sonnet-4.5',
+  model: "anthropic/claude-sonnet-4.5",
   stopWhen: stepCountIs(10),
-  tools: { myTool },
+  tools: { myTool }
 });
 
 // API route

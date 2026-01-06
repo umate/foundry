@@ -123,8 +123,8 @@
   --destructive: #FF6B6B;
   --success: #66BB6A;
 
-  --border: #E0E3D6;
-  --input: #E0E3D6;
+  --border: rgba(224, 227, 214, 0.15);
+  --input: rgba(224, 227, 214, 0.3);
   --ring: #A0A396;
 
   /* Chart colors - dark mode */
@@ -159,13 +159,41 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.mdxeditor [data-lexical-editor="true"] {
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+/* Override MDXEditor's default prose/content colors */
+.mdxeditor .mdxeditor-root-contenteditable,
+.mdxeditor .mdxeditor-root-contenteditable > div,
+.mdxeditor [contenteditable="true"],
+.mdxeditor .prose,
+.mdxeditor p,
+.mdxeditor h1,
+.mdxeditor h2,
+.mdxeditor h3,
+.mdxeditor h4,
+.mdxeditor h5,
+.mdxeditor h6,
+.mdxeditor li,
+.mdxeditor span {
+  color: var(--card-foreground) !important;
+}
+
+.mdxeditor .mdxeditor-root-contenteditable {
+  background: var(--card);
 }
 
 .mdxeditor .mdxeditor-toolbar {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: white;
+  background: var(--card);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }

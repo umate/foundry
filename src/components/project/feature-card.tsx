@@ -66,11 +66,11 @@ export function FeatureCard({ feature, projectId, onUpdated }: FeatureCardProps)
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="font-mono font-bold text-black uppercase tracking-wider mb-1">
+            <h3 className="font-mono font-bold text-foreground uppercase tracking-wider mb-1">
               {feature.title}
             </h3>
             {feature.description && (
-              <p className="text-sm text-black/70 mb-2">{feature.description}</p>
+              <p className="text-sm text-foreground/70 mb-2">{feature.description}</p>
             )}
             <div className="flex gap-2 flex-wrap">
               {feature.requestCount > 0 && (

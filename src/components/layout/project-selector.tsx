@@ -61,7 +61,7 @@ export function ProjectSelector({
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="gap-2 px-3 h-9">
           <FolderSimple weight="bold" className="size-4" />
-          <span className="font-mono text-sm uppercase tracking-wider max-w-[200px] truncate">
+          <span className="font-mono text-sm max-w-[200px] truncate">
             {currentProjectName || 'Select Project'}
           </span>
           <CaretDown weight="bold" className="size-3" />
@@ -98,7 +98,7 @@ export function ProjectSelector({
           className="gap-2 cursor-pointer"
         >
           <Plus weight="bold" className="size-4" />
-          <span className="font-mono text-sm uppercase tracking-wider">
+          <span className="font-mono text-sm">
             New Project
           </span>
         </DropdownMenuItem>

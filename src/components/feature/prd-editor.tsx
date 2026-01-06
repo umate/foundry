@@ -103,16 +103,16 @@ We are working on implementing this feature. Please:
 
     if (!mounted) {
       return (
-        <div className="relative h-full bg-white">
+        <div className="relative h-full bg-card">
           <div className="p-4 font-mono text-sm text-muted-foreground">Loading editor...</div>
         </div>
       );
     }
 
     return (
-      <div className={`relative h-full bg-white flex flex-col ${isLocked ? 'pointer-events-none' : ''}`}>
+      <div className={`relative h-full bg-card flex flex-col ${isLocked ? 'pointer-events-none' : ''}`}>
         {isLocked && (
-          <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
+          <div className="absolute inset-0 bg-card/50 z-10 flex items-center justify-center">
             <div className="font-mono text-sm uppercase tracking-wider text-muted-foreground animate-pulse">
               AI is generating...
             </div>
