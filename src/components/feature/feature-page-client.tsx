@@ -4,8 +4,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PRDEditor } from './prd-editor';
 import { FeatureChat } from './feature-chat';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from '@phosphor-icons/react/dist/ssr';
+import { AppHeader } from '@/components/layout/app-header';
+import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
 import type { Feature, FeatureMessage, Project } from '@/db/schema';
 import type { MDXEditorMethods } from '@mdxeditor/editor';
 
@@ -24,6 +24,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   const [isLocked, setIsLocked] = useState(!feature.prdMarkdown);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [addIdeaOpen, setAddIdeaOpen] = useState(false);
 
   // Diff mode state
   const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
@@ -133,27 +134,13 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
 
   return (
     <div className="h-screen bg-[#E5E1D8] flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="border-b border-border bg-card px-4 py-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={() => router.push(`/projects/${project.id}`)}
-            >
-              <ArrowLeft weight="bold" />
-            </Button>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-sm text-muted-foreground">{project.name}</span>
-            <span className="text-muted-foreground">/</span>
-            <h1 className="font-mono text-sm font-bold uppercase tracking-wider">
-              {currentTitle || 'New Feature'}
-            </h1>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        currentProjectId={project.id}
+        currentProjectName={project.name}
+        featureName={currentTitle || 'New Feature'}
+        onAddIdea={() => setAddIdeaOpen(true)}
+        onCreateProject={() => router.push('/projects/new')}
+      />
 
       {/* Main Content - Split Layout */}
       <main className="flex-1 flex min-h-0">
@@ -196,6 +183,12 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
           />
         </div>
       </main>
+
+      <AddIdeaDialog
+        open={addIdeaOpen}
+        onOpenChange={setAddIdeaOpen}
+        projectId={project.id}
+      />
     </div>
   );
 }
