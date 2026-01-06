@@ -1,13 +1,26 @@
-import { tool, stepCountIs, hasToolCall } from "ai";
+import { tool, stepCountIs, hasToolCall, streamText, convertToModelMessages } from "ai";
 import { z } from "zod";
+import type { UIMessage } from "ai";
+
+// --- Types ---
+
+interface ProjectContext {
+  name: string;
+  description: string | null;
+  stack: string | null;
+}
+
+// --- Internal Constants ---
+
+const MODEL = "google/gemini-3-pro-preview";
 
 const clarificationOptionSchema = z.object({
   id: z.string(),
   label: z.string().describe("Short display text (2-5 words)"),
-  description: z.string().describe("One-line explanation of this option"),
+  description: z.string().describe("One-line explanation of this option")
 });
 
-export const IDEA_AGENT_SYSTEM = `You are a Product Thinking Partner helping refine feature ideas into actionable specs.
+const SYSTEM_PROMPT = `You are a Product Thinking Partner helping refine feature ideas into actionable specs.
 
 ## CRITICAL: Tool Usage Rules
 - ALWAYS use the \`askClarification\` tool to ask questions - NEVER write questions as plain text
@@ -72,12 +85,9 @@ These are product-level questions. The product context already answers them.
 - 2-3 exchanges max, then call \`generatePRD\`
 - Be opinionated - suggest what you think makes sense given the product`;
 
-export const IDEA_AGENT_STOP_WHEN = [
-  stepCountIs(12),
-  hasToolCall('askClarification'),
-];
+const STOP_WHEN = [stepCountIs(12), hasToolCall("askClarification")];
 
-export const ideaAgentTools = {
+const tools = {
   askClarification: tool({
     description: "Present a clarifying question with clickable options",
     inputSchema: z.object({
@@ -92,7 +102,9 @@ export const ideaAgentTools = {
   generatePRD: tool({
     description: "Generate the initial PRD when you have enough information. Output full markdown.",
     inputSchema: z.object({
-      markdown: z.string().describe("The full PRD in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria"),
+      markdown: z
+        .string()
+        .describe("The full PRD in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria")
     }),
     execute: async ({ markdown }) => {
       return { type: "prd" as const, markdown };
@@ -103,10 +115,71 @@ export const ideaAgentTools = {
     description: "Propose changes to an existing PRD. User will review the diff before accepting.",
     inputSchema: z.object({
       markdown: z.string().describe("The full revised PRD in markdown format"),
-      changeSummary: z.string().describe("Brief description of what changed (1-2 sentences)"),
+      changeSummary: z.string().describe("Brief description of what changed (1-2 sentences)")
     }),
     execute: async ({ markdown, changeSummary }) => {
       return { type: "update" as const, markdown, changeSummary };
     }
-  }),
+  })
 };
+
+// --- Internal Helpers ---
+
+function buildProjectContext(project: ProjectContext): string {
+  return `## PROJECT CONTEXT (READ THIS CAREFULLY)
+
+**Product Name:** ${project.name}
+
+**What This Product Does:**
+${project.description || "No description provided."}
+
+**Tech Stack:** ${project.stack || "Not specified"}
+
+You are helping refine features for THIS specific product. Your questions should reference the product's existing capabilities and tech constraints described above.`;
+}
+
+function buildPrdContext(currentPrdMarkdown: string | null): string {
+  if (!currentPrdMarkdown) return "";
+
+  return `
+
+## CURRENT PRD
+
+The user has an existing PRD. When they ask for changes, use the \`updatePRD\` tool to propose modifications.
+
+${currentPrdMarkdown}`;
+}
+
+// --- Factory Function ---
+
+/**
+ * Create a streaming response for the feature refinement agent.
+ *
+ * This encapsulates:
+ * - Project context building
+ * - PRD context composition
+ * - System prompt assembly
+ * - Model selection (fixed: gemini-3-flash)
+ * - Tools and stop conditions
+ */
+export async function createFeatureRefineAgentStream(
+  project: ProjectContext,
+  currentPrdMarkdown: string | null,
+  messages: UIMessage[]
+): Promise<Response> {
+  const projectContext = buildProjectContext(project);
+  const prdContext = buildPrdContext(currentPrdMarkdown);
+  const systemPrompt = `${projectContext}${prdContext}
+
+${SYSTEM_PROMPT}`;
+
+  const result = streamText({
+    model: MODEL,
+    system: systemPrompt,
+    messages: await convertToModelMessages(messages),
+    stopWhen: STOP_WHEN,
+    tools
+  });
+
+  return result.toUIMessageStreamResponse();
+}

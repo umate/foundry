@@ -52,6 +52,11 @@ export async function POST(
       return NextResponse.json({ title: feature.title, description: feature.description });
     }
 
+    // Already generated - description is only set by LLM, so its presence means we're done
+    if (feature.description) {
+      return NextResponse.json({ title: feature.title, description: feature.description });
+    }
+
     const { output } = await generateText({
       model: 'google/gemini-2.0-flash',
       output: Output.object({ schema: featureMetadataSchema }),
