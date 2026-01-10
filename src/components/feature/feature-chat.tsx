@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, UIMessage } from "ai";
+import { useClaudeCodeChat, type DisplayMessage } from "@/lib/hooks/use-claude-code-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { PaperPlaneRightIcon, StopIcon, CircleIcon } from "@phosphor-icons/react";
+import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, TerminalIcon, FileIcon } from "@phosphor-icons/react";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import {
@@ -22,17 +21,12 @@ import {
 import ReactMarkdown from "react-markdown";
 import type { FeatureMessage } from "@/db/schema";
 import { PendingChangeCard } from "./pending-change-card";
-
-interface ClarificationOption {
-  id: string;
-  label: string;
-  description: string;
-}
+import { ClarificationCard } from "./clarification-card";
+import type { ClarificationQuestion } from "@/lib/hooks/use-claude-code-chat";
 
 // DB message content types
 type MessageContent =
   | { text: string }
-  | { toolName: "askClarification"; question: string; options: ClarificationOption[] }
   | { toolName: "generatePRD"; markdown: string }
   | { toolName: "updatePRD"; markdown: string; changeSummary: string };
 
@@ -58,32 +52,6 @@ interface FeatureChatProps {
   onSessionReset?: () => void;
 }
 
-// Simplified display message type for hydrated messages
-interface DisplayMessage {
-  id: string;
-  role: "user" | "assistant";
-  parts: Array<
-    | { type: "text"; text: string }
-    | { type: "tool-askClarification"; question: string; options: ClarificationOption[] }
-    | { type: "tool-generatePRD"; markdown: string }
-    | { type: "tool-updatePRD"; markdown: string; changeSummary: string }
-  >;
-}
-
-// Helper to determine if a message is complete (no pending clarifications)
-function isMessageComplete(message: DisplayMessage, answeredClarifications: Set<string>): boolean {
-  for (let i = 0; i < message.parts.length; i++) {
-    const part = message.parts[i];
-    if (part.type === "tool-askClarification") {
-      const clarificationKey = `${message.id}-${i}`;
-      if (!answeredClarifications.has(clarificationKey)) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 // Tool response wrapper with subtle label
 function ToolResponse({ toolName, children }: { toolName: string; children: React.ReactNode }) {
   return (
@@ -103,13 +71,7 @@ function dbToDisplayMessages(dbMessages: FeatureMessage[]): DisplayMessage[] {
     if ("text" in content) {
       parts.push({ type: "text", text: content.text });
     } else if ("toolName" in content) {
-      if (content.toolName === "askClarification") {
-        parts.push({
-          type: "tool-askClarification",
-          question: content.question,
-          options: content.options
-        });
-      } else if (content.toolName === "generatePRD") {
+      if (content.toolName === "generatePRD") {
         parts.push({
           type: "tool-generatePRD",
           markdown: content.markdown
@@ -131,32 +93,24 @@ function dbToDisplayMessages(dbMessages: FeatureMessage[]): DisplayMessage[] {
   });
 }
 
-// Extract saveable content from a UI message
-// Note: askClarification tool calls are ephemeral and not saved
-function extractMessageContent(msg: UIMessage): MessageContent | null {
+// Extract saveable content from a display message
+function extractMessageContent(msg: DisplayMessage): MessageContent | null {
   for (const part of msg.parts) {
     if (part.type === "text" && part.text) {
       return { text: part.text };
     }
-    // askClarification is ephemeral - skip it
-    if (part.type === "tool-askClarification") {
+    // Activity messages are ephemeral - skip them
+    if (part.type === "activity") {
       continue;
     }
     if (part.type === "tool-generatePRD") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const toolPart = part as any;
-      const markdown = toolPart.markdown || toolPart.output?.markdown;
-      if (markdown) {
-        return { toolName: "generatePRD" as const, markdown };
+      if (part.markdown) {
+        return { toolName: "generatePRD" as const, markdown: part.markdown };
       }
     }
     if (part.type === "tool-updatePRD") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const toolPart = part as any;
-      const markdown = toolPart.markdown || toolPart.output?.markdown;
-      const changeSummary = toolPart.changeSummary || toolPart.output?.changeSummary;
-      if (markdown && changeSummary) {
-        return { toolName: "updatePRD" as const, markdown, changeSummary };
+      if (part.markdown && part.changeSummary) {
+        return { toolName: "updatePRD" as const, markdown: part.markdown, changeSummary: part.changeSummary };
       }
     }
   }
@@ -164,7 +118,6 @@ function extractMessageContent(msg: UIMessage): MessageContent | null {
 }
 
 export function FeatureChat({
-  projectId,
   featureId,
   initialIdea,
   initialMessages = [],
@@ -178,7 +131,6 @@ export function FeatureChat({
   onSessionReset
 }: FeatureChatProps) {
   const [input, setInput] = useState("");
-  const [answeredClarifications, setAnsweredClarifications] = useState<Set<string>>(new Set());
   // Track resolved updatePRD tool calls: key is message-part key, value is resolution status
   const [resolvedChanges, setResolvedChanges] = useState<Map<string, "accepted" | "rejected">>(new Map());
   const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
@@ -192,40 +144,31 @@ export function FeatureChat({
   // Convert initial DB messages to display format
   const hydratedMessages = useMemo(() => dbToDisplayMessages(initialMessages), [initialMessages]);
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: `/api/projects/${projectId}/idea-agent`,
-        body: currentPrdMarkdown ? { currentPrdMarkdown } : undefined
-      }),
-    [projectId, currentPrdMarkdown]
-  );
-
+  // Use Claude Code chat hook
   const {
     messages: chatMessages,
     sendMessage,
     status,
     error,
-    stop
-  } = useChat({
-    transport
+    stop,
+    clearMessages
+  } = useClaudeCodeChat({
+    featureId,
+    currentPrdMarkdown,
+    onPRDGenerated: hasSavedPrd ? undefined : onPRDGenerated,
+    onPendingChange: hasPendingChange ? undefined : onPendingChange
   });
 
   // Combine hydrated messages (from DB) with new chat messages
   const messages: DisplayMessage[] = useMemo(() => {
-    const newMessages = chatMessages.map((msg) => ({
-      id: msg.id,
-      role: msg.role as "user" | "assistant",
-      parts: msg.parts as DisplayMessage["parts"]
-    }));
-    return [...hydratedMessages, ...newMessages];
+    return [...hydratedMessages, ...chatMessages];
   }, [chatMessages, hydratedMessages]);
 
-  const isLoading = status === "streaming" || status === "submitted";
+  const isLoading = status === "streaming";
 
   // Rotate thinking phrases while loading
   const thinkingPhrases = useMemo(
-    () => ["Thinking...", "Analyzing your request...", "Drafting ideas...", "Almost there..."],
+    () => ["Exploring codebase...", "Analyzing patterns...", "Understanding context..."],
     []
   );
   const thinkingPhrase = thinkingPhrases[thinkingPhraseIndex % thinkingPhrases.length];
@@ -292,77 +235,23 @@ export function FeatureChat({
     }
   }, [status, chatMessages, saveMessage]);
 
-  // Watch for PRD generation in messages - use ref to prevent duplicate callbacks
+  // Watch for PRD generation in hydrated messages (from DB reload)
   useEffect(() => {
     if (hasNotifiedPRDRef.current) return;
-    // Skip if PRD already saved in DB - don't overwrite user edits
     if (hasSavedPrd) return;
 
-    for (const message of messages) {
+    for (const message of hydratedMessages) {
       if (message.role === "assistant" && message.parts) {
         for (const part of message.parts) {
-          if (part.type === "tool-generatePRD") {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const toolPart = part as any;
-            // Try different possible locations for the markdown data
-            const markdown = toolPart.markdown || toolPart.output?.markdown || toolPart.result?.markdown;
-            if (markdown) {
-              hasNotifiedPRDRef.current = true;
-              onPRDGenerated(markdown);
-              return;
-            }
+          if (part.type === "tool-generatePRD" && part.markdown) {
+            hasNotifiedPRDRef.current = true;
+            onPRDGenerated(part.markdown);
+            return;
           }
         }
       }
     }
-  }, [messages, onPRDGenerated, hasSavedPrd]);
-
-  // Watch for updatePRD tool calls to trigger pending change
-  // IMPORTANT: Only watch NEW messages from chatMessages, not hydrated DB messages
-  // This prevents re-triggering pending change flow for historical updatePRD that was already accepted/rejected
-  const hasNotifiedUpdateRef = useRef(false);
-  useEffect(() => {
-    if (hasNotifiedUpdateRef.current) return;
-    if (hasPendingChange) return; // Already have a pending change
-
-    // Only check NEW messages from chatMessages, not hydrated DB messages
-    for (const message of chatMessages) {
-      if (message.role === "assistant" && message.parts) {
-        for (const part of message.parts) {
-          if (part.type === "tool-updatePRD") {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const toolPart = part as any;
-            const markdown = toolPart.markdown || toolPart.output?.markdown;
-            const changeSummary = toolPart.changeSummary || toolPart.output?.changeSummary;
-            if (markdown && changeSummary) {
-              hasNotifiedUpdateRef.current = true;
-              onPendingChange(markdown, changeSummary);
-              return;
-            }
-          }
-        }
-      }
-    }
-  }, [chatMessages, onPendingChange, hasPendingChange]);
-
-  // Reset update notification ref when pending change is resolved
-  useEffect(() => {
-    if (!hasPendingChange) {
-      hasNotifiedUpdateRef.current = false;
-    }
-  }, [hasPendingChange]);
-
-  const handleOptionSelect = (label: string, description: string, clarificationKey: string) => {
-    setAnsweredClarifications((prev) => new Set(prev).add(clarificationKey));
-    const responseText = description ? `${label}: ${description}` : label;
-    saveMessage("user", { text: responseText });
-    sendMessage({ text: responseText });
-  };
-
-  const handleOtherSelect = (clarificationKey: string) => {
-    setAnsweredClarifications((prev) => new Set(prev).add(clarificationKey));
-    textareaRef.current?.focus();
-  };
+  }, [hydratedMessages, onPRDGenerated, hasSavedPrd]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter sends, Shift+Enter for newline
@@ -383,6 +272,29 @@ export function FeatureChat({
     }
   };
 
+  const handleClarificationSubmit = useCallback(
+    (responses: Map<number, string | string[]>, questions: ClarificationQuestion[]) => {
+      // Format: "1. {Q}: {A}\n2. {Q}: {A}"
+      const lines: string[] = [];
+
+      questions.forEach((q, index) => {
+        const selection = responses.get(index);
+        if (selection) {
+          const answer = Array.isArray(selection) ? selection.join(", ") : selection;
+          lines.push(`${index + 1}. ${q.question}: ${answer}`);
+        }
+      });
+
+      const responseText = lines.join("\n");
+
+      if (responseText) {
+        saveMessage("user", { text: responseText });
+        sendMessage({ text: responseText });
+      }
+    },
+    [saveMessage, sendMessage]
+  );
+
   const handleResetSession = async () => {
     try {
       const response = await fetch(`/api/features/${featureId}/messages`, {
@@ -393,10 +305,9 @@ export function FeatureChat({
         savedMessageIdsRef.current.clear();
         hasSentInitialIdeaRef.current = false;
         hasNotifiedPRDRef.current = false;
-        hasNotifiedUpdateRef.current = false;
         // Clear local state
-        setAnsweredClarifications(new Set());
         setResolvedChanges(new Map());
+        clearMessages();
         // Notify parent to remount this component with fresh state
         onSessionReset?.();
       }
@@ -425,7 +336,7 @@ export function FeatureChat({
         )}
 
         {messages.map((message) => {
-          // Deduplicate parts by content to handle AI SDK quirks
+          // Deduplicate parts by content
           const seenTexts = new Set<string>();
           const seenToolCalls = new Set<string>();
 
@@ -435,14 +346,12 @@ export function FeatureChat({
               seenTexts.add(part.text);
               return true;
             }
-            if (
-              part.type === "tool-askClarification" ||
-              part.type === "tool-generatePRD" ||
-              part.type === "tool-updatePRD"
-            ) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const toolPart = part as any;
-              const key = `${part.type}-${JSON.stringify(toolPart.question || toolPart.markdown?.slice(0, 50) || "")}`;
+            if (part.type === "activity") {
+              // Don't deduplicate activity messages
+              return true;
+            }
+            if (part.type === "tool-generatePRD" || part.type === "tool-updatePRD") {
+              const key = `${part.type}-${part.markdown?.slice(0, 50) || ""}`;
               if (seenToolCalls.has(key)) return false;
               seenToolCalls.add(key);
               return true;
@@ -453,11 +362,7 @@ export function FeatureChat({
           return (
             <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex gap-3 items-start"}>
               {message.role === "assistant" && (
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
-                    isMessageComplete(message, answeredClarifications) ? "bg-success" : "bg-secondary"
-                  }`}
-                />
+                <span className="w-2 h-2 rounded-full shrink-0 mt-1.5 bg-success" />
               )}
               <div className={message.role === "user" ? "max-w-[80%] space-y-3" : "flex-1 space-y-3"}>
                 {uniqueParts.map((part, i) => {
@@ -474,61 +379,16 @@ export function FeatureChat({
                     );
                   }
 
-                  if (part.type === "tool-askClarification") {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const toolPart = part as any;
-                    // Try different possible locations for the clarification data
-                    const output = toolPart.output || toolPart.result || toolPart;
-                    const question = output?.question;
-                    const options = output?.options as ClarificationOption[] | undefined;
-                    const clarificationKey = `${message.id}-${i}`;
-                    const isAnswered = answeredClarifications.has(clarificationKey);
-
-                    if (question) {
-                      return (
-                        <ToolResponse key={clarificationKey} toolName="Clarification Question">
-                          <div className="space-y-2">
-                            <span className="text-sm">{question}</span>
-                            {!isAnswered && (
-                              <div className="space-y-1 py-2">
-                                {options?.map((option) => (
-                                  <button
-                                    key={option.id}
-                                    type="button"
-                                    onClick={() =>
-                                      handleOptionSelect(option.label, option.description, clarificationKey)
-                                    }
-                                    disabled={isLoading}
-                                    className="w-full flex items-start gap-2 p-2 rounded-md border border-border text-left hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    <CircleIcon
-                                      weight="bold"
-                                      className="size-4 mt-0.5 shrink-0 text-muted-foreground/50"
-                                    />
-                                    <div className="min-w-0 space-y-0.5">
-                                      <span className="text-sm font-semibold block">{option.label}</span>
-                                      {option.description && (
-                                        <span className="text-sm font text-muted-foreground block">
-                                          {option.description}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </button>
-                                ))}
-                                <button
-                                  type="button"
-                                  onClick={() => handleOtherSelect(clarificationKey)}
-                                  disabled={isLoading}
-                                  className="w-full flex items-center gap-2 p-2 rounded-md border border-dashed border-muted-foreground/50 text-left hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-muted-foreground"
-                                >
-                                  <span className="text-sm">Other</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </ToolResponse>
-                      );
-                    }
+                  if (part.type === "activity") {
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="flex items-center gap-2 text-xs text-muted-foreground font-mono"
+                      >
+                        <MagnifyingGlassIcon weight="bold" className="size-3 animate-pulse" />
+                        <span>{part.message}</span>
+                      </div>
+                    );
                   }
 
                   if (part.type === "tool-generatePRD") {
@@ -540,10 +400,7 @@ export function FeatureChat({
                   }
 
                   if (part.type === "tool-updatePRD") {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const toolPart = part as any;
-                    const changeSummary =
-                      toolPart.changeSummary || toolPart.output?.changeSummary || "Changes proposed";
+                    const changeSummary = part.changeSummary || "Changes proposed";
                     const updateKey = `${message.id}-${i}`;
                     const resolution = resolvedChanges.get(updateKey);
 
@@ -580,6 +437,109 @@ export function FeatureChat({
                           setResolvedChanges((prev) => new Map(prev).set(updateKey, "rejected"));
                           onRejectChange();
                         }}
+                      />
+                    );
+                  }
+
+                  // Render tool-use events (other tools being called)
+                  if (part.type === "tool-use") {
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="flex items-center gap-2 text-xs text-muted-foreground font-mono"
+                      >
+                        <MagnifyingGlassIcon weight="bold" className="size-3" />
+                        <span>Tool: {part.name}</span>
+                      </div>
+                    );
+                  }
+
+                  // Render file search results (Glob/Grep)
+                  if (part.type === "file-search-result") {
+                    const displayFiles = part.files.slice(0, 3);
+                    const remaining = part.count - displayFiles.length;
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="flex items-center gap-2 text-xs text-muted-foreground font-mono"
+                      >
+                        <MagnifyingGlassIcon weight="bold" className="size-3 shrink-0" />
+                        <span>
+                          Found: {displayFiles.join(", ")}
+                          {remaining > 0 && ` (+${remaining} more)`}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  // Render file read results
+                  if (part.type === "file-read-result") {
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="flex items-center gap-2 text-xs text-muted-foreground font-mono"
+                      >
+                        <FileIcon weight="bold" className="size-3 shrink-0" />
+                        <span>
+                          Read: {part.path}
+                          {part.lineCount && ` (${part.lineCount} lines)`}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  // Render bash command results
+                  if (part.type === "bash-result") {
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="rounded-md bg-zinc-900 border border-zinc-700 overflow-hidden"
+                      >
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 border-b border-zinc-700">
+                          <TerminalIcon weight="bold" className="size-3 text-zinc-400" />
+                          <span className="text-xs font-mono text-zinc-400">
+                            {part.command || "Command output"}
+                          </span>
+                          {part.exitCode !== undefined && part.exitCode !== 0 && (
+                            <span className="text-xs font-mono text-red-400 ml-auto">
+                              exit {part.exitCode}
+                            </span>
+                          )}
+                        </div>
+                        {part.output && (
+                          <pre className="p-3 text-xs font-mono text-zinc-300 whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
+                            {part.output.length > 500 ? part.output.slice(0, 500) + "..." : part.output}
+                          </pre>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Render raw/debug messages as JSON
+                  if (part.type === "raw") {
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="rounded-md bg-muted p-2 overflow-x-auto"
+                      >
+                        <div className="text-xs font-mono text-muted-foreground mb-1">
+                          [{part.messageType}]
+                        </div>
+                        <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+                          {JSON.stringify(part.data, null, 2)}
+                        </pre>
+                      </div>
+                    );
+                  }
+
+                  // Render clarification questions from AskUserQuestion tool
+                  if (part.type === "clarification") {
+                    return (
+                      <ClarificationCard
+                        key={`${message.id}-${i}`}
+                        questions={part.questions}
+                        onSubmit={(responses) => handleClarificationSubmit(responses, part.questions)}
+                        disabled={isLoading}
                       />
                     );
                   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CopyIcon, ArrowsClockwiseIcon } from '@phosphor-icons/react';
+import { CopyIcon, ArrowsClockwiseIcon, FolderIcon } from '@phosphor-icons/react';
 import {
   Dialog,
   DialogContent,
@@ -12,12 +12,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { FolderPickerDialog } from '@/components/ui/folder-picker-dialog';
 
 interface ProjectBase {
   id: string;
   name: string;
   description: string | null;
   stack: string | null;
+  repoPath: string | null;
   widgetApiKey: string | null;
 }
 
@@ -37,16 +39,19 @@ export function ProjectSettingsDialog({
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || '');
   const [stack, setStack] = useState(project.stack || '');
+  const [repoPath, setRepoPath] = useState(project.repoPath || '');
   const [apiKey, setApiKey] = useState(project.widgetApiKey || '');
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [copied, setCopied] = useState<'key' | 'embed' | null>(null);
   const [error, setError] = useState('');
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
 
   useEffect(() => {
     setName(project.name);
     setDescription(project.description || '');
     setStack(project.stack || '');
+    setRepoPath(project.repoPath || '');
     setApiKey(project.widgetApiKey || '');
   }, [project]);
 
@@ -63,6 +68,7 @@ export function ProjectSettingsDialog({
           name: name.trim(),
           description: description.trim() || null,
           stack: stack.trim() || null,
+          repoPath: repoPath.trim() || null,
         }),
       });
 
@@ -162,6 +168,38 @@ window.FOUNDRY_API_KEY = "${apiKey}";
                 placeholder="Next.js, React, TypeScript, etc."
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium font-mono uppercase tracking-wider">
+                Codebase Path
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={repoPath}
+                  onChange={(e) => setRepoPath(e.target.value)}
+                  placeholder="/path/to/project"
+                  className="font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setFolderPickerOpen(true)}
+                  type="button"
+                >
+                  <FolderIcon weight="bold" className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Local path to project repository for AI codebase analysis
+              </p>
+            </div>
+
+            <FolderPickerDialog
+              open={folderPickerOpen}
+              onOpenChange={setFolderPickerOpen}
+              value={repoPath}
+              onSelect={setRepoPath}
+            />
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3">

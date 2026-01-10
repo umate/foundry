@@ -14,6 +14,7 @@ export const projects = pgTable('projects', {
   description: text('description'),
   stack: text('stack'),
   widgetApiKey: text('widget_api_key'), // API key for embeddable feedback widget
+  repoPath: text('repo_path'), // Local filesystem path to project codebase for AI context
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

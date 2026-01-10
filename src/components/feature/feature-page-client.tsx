@@ -6,6 +6,17 @@ import { PRDEditor } from './prd-editor';
 import { FeatureChat } from './feature-chat';
 import { AppHeader } from '@/components/layout/app-header';
 import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import type { Feature, FeatureMessage, Project } from '@/db/schema';
 import type { MDXEditorMethods } from '@mdxeditor/editor';
 
@@ -25,6 +36,8 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [addIdeaOpen, setAddIdeaOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Diff mode state
   const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
@@ -79,6 +92,25 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
     setProposedMarkdown(null);
     setOriginalMarkdown(null);
   }, []);
+
+  // Handle feature deletion
+  const handleDeleteFeature = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/features/${feature.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        router.push(`/projects/${project.id}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete feature:', error);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  }, [feature.id, project.id, router]);
 
   // Handle editor content changes
   const handleContentChange = useCallback((markdown: string) => {
@@ -140,6 +172,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
         featureName={currentTitle || 'New Feature'}
         onAddIdea={() => setAddIdeaOpen(true)}
         onCreateProject={() => router.push('/projects/new')}
+        onDeleteFeature={() => setShowDeleteDialog(true)}
       />
 
       {/* Main Content - Split Layout */}
@@ -189,6 +222,27 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
         onOpenChange={setAddIdeaOpen}
         projectId={project.id}
       />
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Feature?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this feature and all associated chat messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="outline" disabled={isDeleting}>Cancel</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button variant="destructive" onClick={handleDeleteFeature} disabled={isDeleting}>
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

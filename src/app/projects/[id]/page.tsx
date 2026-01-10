@@ -14,6 +14,7 @@ interface ProjectData {
   name: string;
   description: string | null;
   stack: string | null;
+  repoPath: string | null;
   widgetApiKey: string | null;
   features: {
     idea: Feature[];
@@ -89,7 +90,7 @@ export default function ProjectPage({
     router.push(`/projects/${newProjectId}`);
   };
 
-  const handleProjectUpdated = (updated: { id: string; name: string; description: string | null; stack: string | null; widgetApiKey: string | null }) => {
+  const handleProjectUpdated = (updated: { id: string; name: string; description: string | null; stack: string | null; repoPath: string | null; widgetApiKey: string | null }) => {
     setProject(prev => prev ? { ...prev, ...updated } : prev);
   };
 

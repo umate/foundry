@@ -1,6 +1,7 @@
 "use client";
 
-import { PlusIcon, GearIcon } from "@phosphor-icons/react";
+import Link from "next/link";
+import { PlusIcon, GearIcon, TrashIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
 import { ThemeToggle } from "./theme-toggle";
@@ -12,14 +13,15 @@ interface AppHeaderProps {
   onAddIdea: () => void;
   onCreateProject: () => void;
   onOpenSettings?: () => void;
+  onDeleteFeature?: () => void;
 }
 
-export function AppHeader({ currentProjectId, currentProjectName, featureName, onAddIdea, onCreateProject, onOpenSettings }: AppHeaderProps) {
+export function AppHeader({ currentProjectId, currentProjectName, featureName, onAddIdea, onCreateProject, onOpenSettings, onDeleteFeature }: AppHeaderProps) {
   return (
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
       {/* Left: Logo + Project Selector + Feature Breadcrumb */}
       <div className="flex items-center gap-3">
-        <span className="font-mono text-base font-bold uppercase tracking-wider">Foundry</span>
+        <Link href="/" className="font-mono text-base font-bold uppercase tracking-wider hover:opacity-80 transition-opacity">Foundry</Link>
         <span className="text-foreground/30">|</span>
         <ProjectSelector
           currentProjectId={currentProjectId}
@@ -42,6 +44,11 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
         {currentProjectId && onOpenSettings && (
           <Button variant="ghost" size="icon" onClick={onOpenSettings}>
             <GearIcon weight="bold" className="h-4 w-4" />
+          </Button>
+        )}
+        {featureName && onDeleteFeature && (
+          <Button variant="ghost" size="icon" onClick={onDeleteFeature} title="Delete feature">
+            <TrashIcon weight="bold" className="h-4 w-4" />
           </Button>
         )}
         <Button variant="outline" onClick={onAddIdea} size="sm">

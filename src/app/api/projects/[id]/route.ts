@@ -5,8 +5,9 @@ import { featureRepository } from '@/db/repositories/feature.repository';
 
 const updateProjectSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  description: z.string().optional(),
-  stack: z.string().optional(),
+  description: z.string().nullable().optional(),
+  stack: z.string().nullable().optional(),
+  repoPath: z.string().nullable().optional(),
   regenerateApiKey: z.boolean().optional(),
 });
 
