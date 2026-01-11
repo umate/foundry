@@ -23,21 +23,6 @@ function createFoundryTools() {
     name: "foundry",
     tools: [
       tool(
-        "askClarification",
-        "Ask the user a clarifying question with clickable options. Use this to understand scope, priorities, and constraints BEFORE generating PRD. Ask questions first, explore codebase second, generate PRD last.",
-        {
-          question: z.string().describe("The clarifying question to ask"),
-          header: z.string().describe("Short label for the question (2-4 words, e.g. 'Scope', 'Priority')"),
-          options: z.array(z.object({
-            label: z.string().describe("Option label (2-5 words)"),
-            description: z.string().describe("Brief explanation of this option")
-          })).min(2).max(4)
-        },
-        async ({ question, header, options }) => ({
-          content: [{ type: "text" as const, text: JSON.stringify({ type: "clarification", question, header, options, multiSelect: false }) }]
-        })
-      ),
-      tool(
         "generatePRD",
         "Generate the PRD based on the feature idea and codebase analysis. Only call this AFTER asking clarifying questions and when scope is crystal clear.",
         {
@@ -92,19 +77,19 @@ You are a Product Thinking Partner with access to this project's codebase. Your 
 
 ## Your Process (IN THIS ORDER)
 1. **Acknowledge** the idea briefly (1-2 sentences)
-2. **Ask clarifying questions** using \`mcp__foundry__askClarification\` tool to understand:
+2. **Ask clarifying questions** using the \`AskUserQuestion\` tool to understand:
    - Scope: MVP vs full feature? What's in vs out?
    - Priority: What's most important to get right?
    - Edge cases: What happens when things go wrong?
    - Constraints: Timeline, tech limitations, dependencies?
-3. **After 3-5 clarifying exchanges**, explore the codebase if needed
+3. **After user answers**, explore the codebase if needed
 4. **Generate PRD** only when scope is crystal clear
 
-## CRITICAL: Ask Questions First!
+## CRITICAL: Batch Questions Together!
 - Do NOT jump straight to codebase exploration or PRD generation
-- Each feature idea deserves 3-5 clarifying questions minimum
-- Use \`mcp__foundry__askClarification\` tool for every question
-- Wait for user's response before asking the next question
+- Use \`AskUserQuestion\` with 2-4 questions per call (they appear as tabs for the user)
+- Group related questions together (e.g., scope questions, behavior questions, edge case questions)
+- Example: Ask about use case, deletion behavior, and cascading in ONE call, not three separate calls
 
 ## When to Ask Questions
 - The idea is vague or could mean multiple things
@@ -213,7 +198,7 @@ export async function* createClaudeCodeStream(
   // Configure allowed tools
   const allowedTools = [
     "Read", "Glob", "Grep", // Codebase understanding
-    "mcp__foundry__askClarification", // Questions first!
+    "AskUserQuestion", // Native multi-question tool (supports 1-4 questions as tabs)
     "mcp__foundry__generatePRD",
     "mcp__foundry__updatePRD"
   ];

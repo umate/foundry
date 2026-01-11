@@ -75,9 +75,12 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
       return;
     }
 
-    // Multi-question: auto-advance to next question
+    // Multi-question: auto-advance to next question after brief delay
+    // so user can see their selection confirmed
     if (questionIndex < questions.length - 1) {
-      setActiveTab(String(questionIndex + 1));
+      setTimeout(() => {
+        setActiveTab(String(questionIndex + 1));
+      }, 250);
     }
   };
 
