@@ -237,7 +237,8 @@
 
 /* Markdown Content Styles (used in PRD editor and chat) */
 .markdown-content,
-.prd-editor-content {
+.spec-editor-content {
+
   /* Headings */
   h1 {
     @apply text-2xl font-bold mt-6 mb-4 pb-2 border-b border-border;
@@ -304,6 +305,7 @@
     @apply italic;
   }
 }
+
 
 /* Thinking state animation */
 @keyframes thinking-pulse {

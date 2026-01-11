@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useFeatureStream } from "@/components/project/background-stream-context";
 import type { DisplayMessage, ClarificationQuestion } from "@/lib/hooks/use-claude-code-chat";
 import { Button } from "@/components/ui/button";
@@ -141,6 +141,7 @@ export function FeatureChat({
   const hasSentInitialIdeaRef = useRef(false);
   const hasNotifiedSpecRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const savedMessageIdsRef = useRef<Set<string>>(new Set());
 
@@ -235,9 +236,18 @@ export function FeatureChat({
     [featureId]
   );
 
-  // Auto-scroll to latest message
+  // Instant scroll on mount, smooth scroll on new messages
+  useLayoutEffect(() => {
+    if (isInitialMount.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+      isInitialMount.current = false;
+    }
+  }, []);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!isInitialMount.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   // Send initial idea when component mounts (only if no existing messages)

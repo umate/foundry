@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { FileText, ListChecks, Trash, X } from "@phosphor-icons/react";
+import { ListChecks, Trash, X } from "@phosphor-icons/react";
 import { useTrackOpenPanel } from "@/components/project/background-stream-context";
 import {
   AlertDialog,
@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { FeatureChat } from "@/components/feature/feature-chat";
 import { SubtaskList } from "./subtask-list";
 import { SpecEditor } from "@/components/feature/spec-editor";
+import { CollapsibleSideBar } from "@/components/ui/collapsible-side-bar";
 import { FeatureStatus, STATUS_LABELS, SubTask } from "@/types/feature";
 import type { FeatureMessage } from "@/db/schema";
 import type { MDXEditorMethods } from "@mdxeditor/editor";
@@ -285,36 +286,28 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
 
       {/* Panel container - positioned on right */}
       <div className="absolute inset-y-0 right-0 flex">
-        {/* Spec Panel - Left side (only when open) */}
-        {specOpen && (
-          <div className="w-[calc(100vw-600px)] max-w-[50vw] bg-card border-r border-border flex flex-col animate-in slide-in-from-left duration-300">
-            {/* Spec Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
-              <h2 className="font-mono text-sm font-bold uppercase tracking-wider">Spec</h2>
-              <Button variant="ghost" size="icon" onClick={() => setSpecOpen(false)} className="size-8">
-                <X weight="bold" className="size-4" />
-              </Button>
-            </div>
-
-            {/* Spec Editor */}
-            <div className="flex-1 overflow-hidden">
-              <SpecEditor
-                ref={editorRef}
-                content={proposedMarkdown ?? specContent}
-                onChange={handleSpecChange}
-                saveStatus={saveStatus}
-                diffMarkdown={originalMarkdown ?? undefined}
-                viewMode={originalMarkdown ? "diff" : "rich-text"}
-                projectContext={project}
-                featureTitle={feature?.title}
-              />
-            </div>
-          </div>
-        )}
+        {/* Spec Panel - Collapsible side bar */}
+        <CollapsibleSideBar
+          label="SPEC"
+          isExpanded={specOpen}
+          onToggle={() => setSpecOpen(!specOpen)}
+          hasContent={hasSpec}
+        >
+          <SpecEditor
+            ref={editorRef}
+            content={proposedMarkdown ?? specContent}
+            onChange={handleSpecChange}
+            saveStatus={saveStatus}
+            diffMarkdown={originalMarkdown ?? undefined}
+            viewMode={originalMarkdown ? "diff" : "rich-text"}
+            projectContext={project}
+            featureTitle={feature?.title}
+          />
+        </CollapsibleSideBar>
 
         {/* Chat Panel - Right side (always visible when panel is open) */}
         <div
-          className={`bg-background border-l border-border flex flex-col animate-in slide-in-from-right duration-300 ${
+          className={`bg-background border-l border-border flex flex-col animate-in fade-in duration-200 ${
             specOpen ? "w-[600px]" : "w-full sm:w-[600px]"
           }`}
         >
@@ -377,16 +370,6 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                       title="Tasks"
                     >
                       <ListChecks weight="bold" className="size-4" />
-                    </Button>
-                    <Button
-                      variant={specOpen ? "secondary" : "ghost"}
-                      size="icon"
-                      onClick={() => setSpecOpen(!specOpen)}
-                      disabled={!hasSpec && !specContent}
-                      className="size-8"
-                      title={specOpen ? "Hide Spec" : hasSpec ? "View Spec" : "No Spec Yet"}
-                    >
-                      <FileText weight="bold" className="size-4" />
                     </Button>
                     <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                       <AlertDialogTrigger asChild>
