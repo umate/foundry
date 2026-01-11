@@ -12,9 +12,9 @@ interface StreamState {
 }
 
 interface StreamOptions {
-  currentPrdMarkdown?: string;
+  currentSpecMarkdown?: string;
   featureTitle?: string;
-  onPRDGenerated?: (markdown: string) => void;
+  onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
 }
 
@@ -35,6 +35,9 @@ interface BackgroundStreamContextValue {
   setMessages: (featureId: string, messages: DisplayMessage[]) => void;
   // Register callback for when panel opens a feature
   setOpenFeaturePanel: (callback: (featureId: string) => void) => void;
+  // Track which feature panel is currently open (for toast suppression)
+  registerOpenPanel: (featureId: string) => void;
+  unregisterOpenPanel: (featureId: string) => void;
 }
 
 const BackgroundStreamContext = createContext<BackgroundStreamContextValue | null>(null);
@@ -127,7 +130,7 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
     startStream(
       featureId,
       messagesWithUser,
-      options.currentPrdMarkdown,
+      options.currentSpecMarkdown,
       {
         onStatusChange: (status) => {
           updateStreamState(featureId, { status });
@@ -141,7 +144,8 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
           if (!openPanelsRef.current.has(featureId)) {
             const title = featureTitlesRef.current.get(featureId) || "Feature";
             toast.error(`Error processing "${title}"`, {
-              description: error.message
+              description: error.message,
+              closeButton: true
             });
           }
         },
@@ -150,6 +154,7 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
           if (!openPanelsRef.current.has(featureId)) {
             const title = featureTitlesRef.current.get(featureId) || "Feature";
             toast.success(`Work completed for "${title}"`, {
+              closeButton: true,
               action: openFeaturePanelRef.current ? {
                 label: "View",
                 onClick: () => openFeaturePanelRef.current?.(featureId)
@@ -159,7 +164,7 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
           // Clean up abort controller
           abortControllersRef.current.delete(featureId);
         },
-        onPRDGenerated: options.onPRDGenerated,
+        onSpecGenerated: options.onSpecGenerated,
         onPendingChange: options.onPendingChange
       },
       abortController
@@ -203,6 +208,15 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
     openFeaturePanelRef.current = callback;
   }, []);
 
+  // Register/unregister open panels for toast suppression
+  const registerOpenPanel = useCallback((featureId: string) => {
+    openPanelsRef.current.add(featureId);
+  }, []);
+
+  const unregisterOpenPanel = useCallback((featureId: string) => {
+    openPanelsRef.current.delete(featureId);
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -220,7 +234,9 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
     stopStream,
     clearStream,
     setMessages,
-    setOpenFeaturePanel
+    setOpenFeaturePanel,
+    registerOpenPanel,
+    unregisterOpenPanel
   };
 
   return (
@@ -260,14 +276,14 @@ export function useFeatureStream(featureId: string) {
 
 // Hook for tracking open panels (used by chat panel)
 export function useTrackOpenPanel(featureId: string | null) {
-  const openPanelsRef = useRef<Set<string>>(new Set());
+  const context = useBackgroundStream();
 
   useEffect(() => {
     if (featureId) {
-      openPanelsRef.current.add(featureId);
+      context.registerOpenPanel(featureId);
       return () => {
-        openPanelsRef.current.delete(featureId);
+        context.unregisterOpenPanel(featureId);
       };
     }
-  }, [featureId]);
+  }, [featureId, context]);
 }

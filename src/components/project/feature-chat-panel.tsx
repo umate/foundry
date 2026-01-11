@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { FileText, ListChecks, Trash, X } from "@phosphor-icons/react";
+import { useTrackOpenPanel } from "@/components/project/background-stream-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FeatureChat } from "@/components/feature/feature-chat";
 import { SubtaskList } from "./subtask-list";
-import { PRDEditor } from "@/components/feature/prd-editor";
+import { SpecEditor } from "@/components/feature/spec-editor";
 import { FeatureStatus, STATUS_LABELS, SubTask } from "@/types/feature";
 import type { FeatureMessage } from "@/db/schema";
 import type { MDXEditorMethods } from "@mdxeditor/editor";
@@ -40,12 +41,15 @@ interface FeatureData {
   title: string;
   description: string | null;
   status: FeatureStatus;
-  prdMarkdown: string | null;
+  specMarkdown: string | null;
   initialIdea: string | null;
   subtasks: SubTask[];
 }
 
 export function FeatureChatPanel({ featureId, projectId, project, onClose, onFeatureUpdated }: FeatureChatPanelProps) {
+  // Track this panel as open to suppress toasts for the current feature
+  useTrackOpenPanel(featureId);
+
   const editorRef = useRef<MDXEditorMethods>(null);
   const [feature, setFeature] = useState<FeatureData | null>(null);
   const [messages, setMessages] = useState<FeatureMessage[]>([]);
@@ -53,8 +57,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [specOpen, setSpecOpen] = useState(false);
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
 
-  // PRD state
-  const [prdContent, setPrdContent] = useState("");
+  // Spec state
+  const [specContent, setSpecContent] = useState("");
   const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
   const [originalMarkdown, setOriginalMarkdown] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -108,11 +112,11 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
             title: featureData.title,
             description: featureData.description,
             status: featureData.status === "ready" ? "current" : featureData.status,
-            prdMarkdown: featureData.prdMarkdown,
+            specMarkdown: featureData.specMarkdown,
             initialIdea: featureData.initialIdea,
             subtasks: featureData.subtasks || []
           });
-          setPrdContent(featureData.prdMarkdown || "");
+          setSpecContent(featureData.specMarkdown || "");
         }
 
         // Load messages
@@ -131,28 +135,28 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     loadFeature();
   }, [featureId]);
 
-  // Handle PRD generation from chat
-  const handlePRDGenerated = useCallback((markdown: string) => {
-    setPrdContent(markdown);
+  // Handle spec generation from chat
+  const handleSpecGenerated = useCallback((markdown: string) => {
+    setSpecContent(markdown);
     setHasUnsavedChanges(true);
     if (editorRef.current) {
       editorRef.current.setMarkdown(markdown);
     }
   }, []);
 
-  // Handle pending change from updatePRD tool
+  // Handle pending change from updateSpec tool
   const handlePendingChange = useCallback(
     (proposed: string) => {
-      setOriginalMarkdown(prdContent);
+      setOriginalMarkdown(specContent);
       setProposedMarkdown(proposed);
     },
-    [prdContent]
+    [specContent]
   );
 
   // Handle accepting the proposed change
   const handleAcceptChange = useCallback(() => {
     if (proposedMarkdown) {
-      setPrdContent(proposedMarkdown);
+      setSpecContent(proposedMarkdown);
       setHasUnsavedChanges(true);
     }
     setProposedMarkdown(null);
@@ -194,16 +198,16 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     }
   }, [featureId, onClose, onFeatureUpdated]);
 
-  // Save PRD
-  const savePrd = useCallback(async () => {
-    if (!featureId || !prdContent.trim()) return;
+  // Save spec
+  const saveSpec = useCallback(async () => {
+    if (!featureId || !specContent.trim()) return;
 
     setSaveStatus("saving");
     try {
-      const response = await fetch(`/api/features/${featureId}/prd`, {
+      const response = await fetch(`/api/features/${featureId}/spec`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prdMarkdown: prdContent })
+        body: JSON.stringify({ specMarkdown: specContent })
       });
 
       if (response.ok) {
@@ -214,25 +218,25 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         setSaveStatus("idle");
       }
     } catch (error) {
-      console.error("Failed to save PRD:", error);
+      console.error("Failed to save spec:", error);
       setSaveStatus("idle");
     }
-  }, [featureId, prdContent]);
+  }, [featureId, specContent]);
 
-  // Auto-save PRD
+  // Auto-save spec
   useEffect(() => {
-    if (!hasUnsavedChanges || !feature?.prdMarkdown) return;
+    if (!hasUnsavedChanges) return;
 
     const timer = setTimeout(() => {
-      savePrd();
+      saveSpec();
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [prdContent, hasUnsavedChanges, savePrd, feature?.prdMarkdown]);
+  }, [specContent, hasUnsavedChanges, saveSpec]);
 
   // Handle spec content change
   const handleSpecChange = useCallback((markdown: string) => {
-    setPrdContent(markdown);
+    setSpecContent(markdown);
     setHasUnsavedChanges(true);
   }, []);
 
@@ -270,7 +274,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     }
   };
 
-  const hasPrd = !!feature?.prdMarkdown || !!prdContent;
+  const hasSpec = !!feature?.specMarkdown || !!specContent;
 
   if (!isOpen) return null;
 
@@ -294,9 +298,9 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
 
             {/* Spec Editor */}
             <div className="flex-1 overflow-hidden">
-              <PRDEditor
+              <SpecEditor
                 ref={editorRef}
-                content={proposedMarkdown ?? prdContent}
+                content={proposedMarkdown ?? specContent}
                 onChange={handleSpecChange}
                 saveStatus={saveStatus}
                 diffMarkdown={originalMarkdown ?? undefined}
@@ -378,9 +382,9 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                       variant={specOpen ? "secondary" : "ghost"}
                       size="icon"
                       onClick={() => setSpecOpen(!specOpen)}
-                      disabled={!hasPrd && !prdContent}
+                      disabled={!hasSpec && !specContent}
                       className="size-8"
-                      title={specOpen ? "Hide Spec" : hasPrd ? "View Spec" : "No Spec Yet"}
+                      title={specOpen ? "Hide Spec" : hasSpec ? "View Spec" : "No Spec Yet"}
                     >
                       <FileText weight="bold" className="size-4" />
                     </Button>
@@ -431,14 +435,14 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                   featureTitle={feature.title}
                   initialIdea={feature.initialIdea || undefined}
                   initialMessages={messages}
-                  onPRDGenerated={handlePRDGenerated}
+                  onSpecGenerated={handleSpecGenerated}
                   onPendingChange={handlePendingChange}
                   onAcceptChange={handleAcceptChange}
                   onRejectChange={handleRejectChange}
                   onSessionReset={handleSessionReset}
-                  currentPrdMarkdown={prdContent}
+                  currentSpecMarkdown={specContent}
                   hasPendingChange={proposedMarkdown !== null}
-                  hasSavedPrd={!!feature.prdMarkdown}
+                  hasSavedSpec={!!feature.specMarkdown}
                 />
               </div>
 

@@ -37,7 +37,7 @@ export interface StreamCallbacks {
   onMessagesUpdate: (messages: DisplayMessage[]) => void;
   onError: (error: Error) => void;
   onComplete: () => void;
-  onPRDGenerated?: (markdown: string) => void;
+  onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
 }
 
@@ -56,12 +56,12 @@ function generateId(): string {
 export async function startStream(
   featureId: string,
   messages: DisplayMessage[],
-  currentPrdMarkdown: string | undefined,
+  currentSpecMarkdown: string | undefined,
   callbacks: StreamCallbacks,
   abortController: AbortController
 ): Promise<void> {
   // Track notification state per stream
-  let prdNotified = false;
+  let specNotified = false;
   let updateNotified = false;
 
   // Add user message is already done by context, just start streaming
@@ -82,7 +82,7 @@ export async function startStream(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         messages: apiMessages,
-        currentPrdMarkdown
+        currentSpecMarkdown
       }),
       signal: abortController.signal
     });
@@ -161,19 +161,19 @@ export async function startStream(
                 break;
 
               case "tool_result":
-                if (event.name === "generatePRD" && event.output?.markdown) {
+                if (event.name === "generateSpec" && event.output?.markdown) {
                   assistantParts.push({
-                    type: "tool-generatePRD",
+                    type: "tool-generateSpec",
                     markdown: event.output.markdown
                   });
                   updateAssistantMessage();
-                  if (!prdNotified && callbacks.onPRDGenerated) {
-                    prdNotified = true;
-                    callbacks.onPRDGenerated(event.output.markdown);
+                  if (!specNotified && callbacks.onSpecGenerated) {
+                    specNotified = true;
+                    callbacks.onSpecGenerated(event.output.markdown);
                   }
-                } else if (event.name === "updatePRD" && event.output?.markdown && event.output?.changeSummary) {
+                } else if (event.name === "updateSpec" && event.output?.markdown && event.output?.changeSummary) {
                   assistantParts.push({
-                    type: "tool-updatePRD",
+                    type: "tool-updateSpec",
                     markdown: event.output.markdown,
                     changeSummary: event.output.changeSummary
                   });

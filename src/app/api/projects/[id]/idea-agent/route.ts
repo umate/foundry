@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
 
-  const { messages, currentPrdMarkdown }: { messages: UIMessage[]; currentPrdMarkdown?: string } = await req.json();
+  const { messages, currentSpecMarkdown }: { messages: UIMessage[]; currentSpecMarkdown?: string } = await req.json();
 
   if (!messages || !Array.isArray(messages)) {
     return new Response(JSON.stringify({ error: "Messages array required" }), {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return createFeatureRefineAgentStream(
     { name: project.name, description: project.description, stack: project.stack },
-    currentPrdMarkdown ?? null,
+    currentSpecMarkdown ?? null,
     messages
   );
 }

@@ -36,8 +36,7 @@ export const features = pgTable('features', {
   priority: integer('priority').notNull().default(0),
   requestCount: integer('request_count').notNull().default(0),
   parentId: uuid('parent_id'),
-  agentSpec: text('agent_spec'), // Original AI-generated PRD as JSON
-  prdMarkdown: text('prd_markdown'), // User-editable PRD as markdown
+  specMarkdown: text('spec_markdown'), // Feature spec as markdown
   initialIdea: text('initial_idea'), // The raw idea text user submitted
   summary: text('summary'), // AI-generated 1-2 sentence summary for card display
   subtasks: jsonb('subtasks').$type<SubTask[]>().default([]), // Checklist items

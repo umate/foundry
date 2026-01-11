@@ -23,20 +23,20 @@ function createFoundryTools() {
     name: "foundry",
     tools: [
       tool(
-        "generatePRD",
-        "Generate the PRD based on the feature idea and codebase analysis. Only call this AFTER asking clarifying questions and when scope is crystal clear.",
+        "generateSpec",
+        "Generate the spec based on the feature idea and codebase analysis. Only call this AFTER asking clarifying questions and when scope is crystal clear.",
         {
-          markdown: z.string().describe("The full PRD in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria")
+          markdown: z.string().describe("The full spec in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria")
         },
         async ({ markdown }) => ({
-          content: [{ type: "text" as const, text: JSON.stringify({ type: "prd", markdown }) }]
+          content: [{ type: "text" as const, text: JSON.stringify({ type: "spec", markdown }) }]
         })
       ),
       tool(
-        "updatePRD",
-        "Propose changes to an existing PRD. The user will review the diff before accepting.",
+        "updateSpec",
+        "Propose changes to an existing spec. The user will review the diff before accepting.",
         {
-          markdown: z.string().describe("The full revised PRD in markdown format"),
+          markdown: z.string().describe("The full revised spec in markdown format"),
           changeSummary: z.string().describe("Brief description of what changed (1-2 sentences)")
         },
         async ({ markdown, changeSummary }) => ({
@@ -49,7 +49,7 @@ function createFoundryTools() {
 
 // --- System Prompt ---
 
-function buildSystemPrompt(project: ProjectContext, currentPrdMarkdown: string | null): string {
+function buildSystemPrompt(project: ProjectContext, currentSpecMarkdown: string | null): string {
   const projectContext = `## PROJECT CONTEXT (READ THIS CAREFULLY)
 
 **Product Name:** ${project.name}
@@ -61,19 +61,19 @@ ${project.description || "No description provided."}
 
 You are helping refine features for THIS specific product. Your questions should reference the product's existing capabilities and tech constraints described above.`;
 
-  const prdContext = currentPrdMarkdown
+  const specContext = currentSpecMarkdown
     ? `
 
-## CURRENT PRD
+## CURRENT SPEC
 
-The user has an existing PRD. When they ask for changes, use the \`mcp__foundry__updatePRD\` tool to propose modifications.
+The user has an existing spec. When they ask for changes, use the \`mcp__foundry__updateSpec\` tool to propose modifications.
 
-${currentPrdMarkdown}`
+${currentSpecMarkdown}`
     : "";
 
-  return `${projectContext}${prdContext}
+  return `${projectContext}${specContext}
 
-You are a Product Thinking Partner with access to this project's codebase. Your job is to help the user refine their feature idea through thoughtful questions BEFORE generating a PRD.
+You are a Product Thinking Partner with access to this project's codebase. Your job is to help the user refine their feature idea through thoughtful questions BEFORE generating a spec.
 
 ## Your Process (IN THIS ORDER)
 1. **Acknowledge** the idea briefly (1-2 sentences)
@@ -83,10 +83,10 @@ You are a Product Thinking Partner with access to this project's codebase. Your 
    - Edge cases: What happens when things go wrong?
    - Constraints: Timeline, tech limitations, dependencies?
 3. **After user answers**, explore the codebase if needed
-4. **Generate PRD** only when scope is crystal clear
+4. **Generate spec** only when scope is crystal clear
 
 ## CRITICAL: Batch Questions Together!
-- Do NOT jump straight to codebase exploration or PRD generation
+- Do NOT jump straight to codebase exploration or spec generation
 - Use \`AskUserQuestion\` with 2-4 questions per call (they appear as tabs for the user)
 - Group related questions together (e.g., scope questions, behavior questions, edge case questions)
 - Example: Ask about use case, deletion behavior, and cascading in ONE call, not three separate calls
@@ -98,13 +98,13 @@ You are a Product Thinking Partner with access to this project's codebase. Your 
 - Edge cases and error handling aren't specified
 - Integration with existing features is unclear
 
-## Signs You're NOT Ready for PRD
+## Signs You're NOT Ready for Spec
 - User hasn't confirmed what's in/out of scope
 - You're making assumptions about behavior
 - Edge cases haven't been discussed
 - You haven't explored how this fits with existing code
 
-## PRD Markdown Format (use ONLY after questions are answered)
+## Spec Markdown Format (use ONLY after questions are answered)
 \`\`\`markdown
 # Feature Title
 
@@ -133,10 +133,10 @@ Based on codebase analysis:
 \`\`\`
 
 ## Guidelines
-- Questions first, exploration second, PRD last
+- Questions first, exploration second, spec last
 - Be opinionated - suggest what you think makes sense
 - Reference the project context in your questions
-- If updating existing PRD, use \`mcp__foundry__updatePRD\` instead`;
+- If updating existing spec, use \`mcp__foundry__updateSpec\` instead`;
 }
 
 // --- Message Formatting ---
@@ -188,19 +188,19 @@ export function isResultMessage(msg: SDKMessage): msg is SDKResultMessage {
  */
 export async function* createClaudeCodeStream(
   project: ProjectContext,
-  currentPrdMarkdown: string | null,
+  currentSpecMarkdown: string | null,
   messages: ChatMessage[]
 ): AsyncGenerator<SDKMessage> {
   const foundryTools = createFoundryTools();
-  const systemPrompt = buildSystemPrompt(project, currentPrdMarkdown);
+  const systemPrompt = buildSystemPrompt(project, currentSpecMarkdown);
   const prompt = formatMessagesAsPrompt(messages);
 
   // Configure allowed tools
   const allowedTools = [
     "Read", "Glob", "Grep", // Codebase understanding
     "AskUserQuestion", // Native multi-question tool (supports 1-4 questions as tabs)
-    "mcp__foundry__generatePRD",
-    "mcp__foundry__updatePRD"
+    "mcp__foundry__generateSpec",
+    "mcp__foundry__updateSpec"
   ];
 
   const queryOptions: Parameters<typeof query>[0]["options"] = {

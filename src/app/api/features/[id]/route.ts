@@ -35,7 +35,6 @@ const updateFeatureSchema = z.object({
   status: z.enum(['idea', 'scoped', 'current', 'ready', 'done', 'archived']).optional(),
   priority: z.number().int().optional(),
   requestCount: z.number().int().min(0).optional(),
-  agentSpec: z.string().optional(),
 });
 
 // Map 'current' to 'ready' for database storage

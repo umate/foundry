@@ -26,8 +26,8 @@ const SYSTEM_PROMPT = `You are a Product Thinking Partner helping refine feature
 - ALWAYS use the \`askClarification\` tool to ask questions - NEVER write questions as plain text
 - NEVER assume or pre-fill the user's response - wait for them to select an option
 - NEVER write "Selected Option:" or similar - let the user actually choose
-- When ready to finalize, use the \`generatePRD\` tool to create the initial PRD
-- When user asks to modify an existing PRD, use the \`updatePRD\` tool
+- When ready to finalize, use the \`generateSpec\` tool to create the initial spec
+- When user asks to modify an existing spec, use the \`updateSpec\` tool
 
 ## CRITICAL: Use Project Context
 The PROJECT CONTEXT above is essential. You MUST:
@@ -38,11 +38,11 @@ The PROJECT CONTEXT above is essential. You MUST:
 
 ## Your Process
 1. Briefly acknowledge the idea (1-2 sentences of text), then IMMEDIATELY call \`askClarification\` with your first question
-2. After user responds, call \`askClarification\` again OR call \`generatePRD\` if ready
-3. Generate the PRD after 2-3 exchanges max
+2. After user responds, call \`askClarification\` again OR call \`generateSpec\` if ready
+3. Generate the spec after 2-3 exchanges max
 
-## PRD Markdown Format
-When generating or updating a PRD, use this markdown structure:
+## Spec Markdown Format
+When generating or updating a spec, use this markdown structure:
 
 \`\`\`markdown
 # Feature Title
@@ -82,7 +82,7 @@ These are product-level questions. The product context already answers them.
 ## Guidelines
 - Ask ONE question at a time using \`askClarification\`
 - Options must be specific tradeoffs, not "Yes/No/Maybe"
-- 2-3 exchanges max, then call \`generatePRD\`
+- 2-3 exchanges max, then call \`generateSpec\`
 - Be opinionated - suggest what you think makes sense given the product`;
 
 const STOP_WHEN = [stepCountIs(12), hasToolCall("askClarification")];
@@ -99,22 +99,22 @@ const tools = {
     }
   }),
 
-  generatePRD: tool({
-    description: "Generate the initial PRD when you have enough information. Output full markdown.",
+  generateSpec: tool({
+    description: "Generate the initial spec when you have enough information. Output full markdown.",
     inputSchema: z.object({
       markdown: z
         .string()
-        .describe("The full PRD in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria")
+        .describe("The full spec in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria")
     }),
     execute: async ({ markdown }) => {
-      return { type: "prd" as const, markdown };
+      return { type: "spec" as const, markdown };
     }
   }),
 
-  updatePRD: tool({
-    description: "Propose changes to an existing PRD. User will review the diff before accepting.",
+  updateSpec: tool({
+    description: "Propose changes to an existing spec. User will review the diff before accepting.",
     inputSchema: z.object({
-      markdown: z.string().describe("The full revised PRD in markdown format"),
+      markdown: z.string().describe("The full revised spec in markdown format"),
       changeSummary: z.string().describe("Brief description of what changed (1-2 sentences)")
     }),
     execute: async ({ markdown, changeSummary }) => {
@@ -138,16 +138,16 @@ ${project.description || "No description provided."}
 You are helping refine features for THIS specific product. Your questions should reference the product's existing capabilities and tech constraints described above.`;
 }
 
-function buildPrdContext(currentPrdMarkdown: string | null): string {
-  if (!currentPrdMarkdown) return "";
+function buildSpecContext(currentSpecMarkdown: string | null): string {
+  if (!currentSpecMarkdown) return "";
 
   return `
 
-## CURRENT PRD
+## CURRENT SPEC
 
-The user has an existing PRD. When they ask for changes, use the \`updatePRD\` tool to propose modifications.
+The user has an existing spec. When they ask for changes, use the \`updateSpec\` tool to propose modifications.
 
-${currentPrdMarkdown}`;
+${currentSpecMarkdown}`;
 }
 
 // --- Factory Function ---
@@ -157,19 +157,19 @@ ${currentPrdMarkdown}`;
  *
  * This encapsulates:
  * - Project context building
- * - PRD context composition
+ * - Spec context composition
  * - System prompt assembly
- * - Model selection (fixed: gemini-3-flash)
+ * - Model selection
  * - Tools and stop conditions
  */
 export async function createFeatureRefineAgentStream(
   project: ProjectContext,
-  currentPrdMarkdown: string | null,
+  currentSpecMarkdown: string | null,
   messages: UIMessage[]
 ): Promise<Response> {
   const projectContext = buildProjectContext(project);
-  const prdContext = buildPrdContext(currentPrdMarkdown);
-  const systemPrompt = `${projectContext}${prdContext}
+  const specContext = buildSpecContext(currentSpecMarkdown);
+  const systemPrompt = `${projectContext}${specContext}
 
 ${SYSTEM_PROMPT}`;
 

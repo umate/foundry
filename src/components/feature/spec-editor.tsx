@@ -32,7 +32,7 @@ interface ProjectContext {
   stack: string | null;
 }
 
-interface PRDEditorProps {
+interface SpecEditorProps {
   content: string;
   onChange: (markdown: string) => void;
   isLocked?: boolean;
@@ -48,8 +48,8 @@ interface PRDEditorProps {
   featureTitle?: string;
 }
 
-export const PRDEditor = forwardRef<MDXEditorMethods, PRDEditorProps>(
-  function PRDEditor({
+export const SpecEditor = forwardRef<MDXEditorMethods, SpecEditorProps>(
+  function SpecEditor({
     content,
     onChange,
     isLocked = false,
@@ -92,7 +92,7 @@ ${content}
 # Instructions
 
 We are working on implementing this feature. Please:
-1. Review the PRD above carefully
+1. Review the spec above carefully
 2. Ask any clarifying questions if needed
 3. Guide me through the planning process for implementation`;
 
@@ -123,9 +123,9 @@ We are working on implementing this feature. Please:
           ref={ref}
           markdown={content}
           onChange={onChange}
-          placeholder={placeholder || 'PRD will appear here...'}
+          placeholder={placeholder || 'Spec will appear here...'}
           readOnly={isLocked}
-          contentEditableClassName="prd-editor-content font-serif text-base prose prose-base max-w-none p-4"
+          contentEditableClassName="spec-editor-content font-serif text-base prose prose-base max-w-none p-4"
           plugins={[
             // Only include diffSourcePlugin when we have diff content to show
             // This ensures the editor properly switches back to rich-text when diff is cleared

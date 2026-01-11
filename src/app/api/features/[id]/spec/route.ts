@@ -3,15 +3,15 @@ import { generateText, Output } from "ai";
 import { featureRepository } from "@/db/repositories/feature.repository";
 import { z } from "zod";
 
-const updatePRDSchema = z.object({
-  prdMarkdown: z.string()
+const updateSpecSchema = z.object({
+  specMarkdown: z.string()
 });
 
 const summarySchema = z.object({
   summary: z.string().describe('A concise 1-2 sentence summary of the feature'),
 });
 
-const SUMMARY_SYSTEM_PROMPT = `Generate a concise summary of this PRD for display on a Kanban card.
+const SUMMARY_SYSTEM_PROMPT = `Generate a concise summary of this feature spec for display on a Kanban card.
 
 Requirements:
 - Maximum 1-2 sentences
@@ -19,15 +19,15 @@ Requirements:
 - Use plain language, avoid technical jargon
 - Be specific, not generic
 
-Example PRD:
+Example spec:
 "# User Authentication\n## Problem\nUsers need to log in securely.\n## Solution\nImplement OAuth with Google and GitHub providers."
 
 Summary: "Secure login system using OAuth with Google and GitHub, enabling users to sign in with their existing accounts."`;
 
-async function generateSummary(prdMarkdown: string): Promise<string | null> {
+async function generateSummary(specMarkdown: string): Promise<string | null> {
   try {
-    // Skip if PRD is too short to be meaningful
-    if (prdMarkdown.length < 50) {
+    // Skip if spec is too short to be meaningful
+    if (specMarkdown.length < 50) {
       return null;
     }
 
@@ -35,7 +35,7 @@ async function generateSummary(prdMarkdown: string): Promise<string | null> {
       model: 'google/gemini-2.0-flash',
       output: Output.object({ schema: summarySchema }),
       system: SUMMARY_SYSTEM_PROMPT,
-      prompt: prdMarkdown,
+      prompt: specMarkdown,
       temperature: 0.3,
     });
 
@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json();
 
     // Validate request body
-    const { prdMarkdown } = updatePRDSchema.parse(body);
+    const { specMarkdown } = updateSpecSchema.parse(body);
 
     // Verify feature exists
     const existingFeature = await featureRepository.findById(featureId);
@@ -60,12 +60,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Feature not found" }, { status: 404 });
     }
 
-    // Generate summary from PRD (async, non-blocking)
-    const summary = await generateSummary(prdMarkdown);
+    // Generate summary from spec
+    const summary = await generateSummary(specMarkdown);
 
-    // Update the feature's PRD markdown and summary
+    // Update the feature's spec markdown and summary
     const updatedFeature = await featureRepository.update(featureId, {
-      prdMarkdown,
+      specMarkdown,
       ...(summary ? { summary } : {}),
     });
 
@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
 
-    console.error("Failed to update PRD:", error);
-    return NextResponse.json({ error: "Failed to update PRD" }, { status: 500 });
+    console.error("Failed to update spec:", error);
+    return NextResponse.json({ error: "Failed to update spec" }, { status: 500 });
   }
 }

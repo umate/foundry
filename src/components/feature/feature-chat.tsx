@@ -5,7 +5,7 @@ import { useFeatureStream } from "@/components/project/background-stream-context
 import type { DisplayMessage, ClarificationQuestion } from "@/lib/hooks/use-claude-code-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, TerminalIcon, FileIcon } from "@phosphor-icons/react";
+import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon } from "@phosphor-icons/react";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import {
@@ -23,12 +23,13 @@ import ReactMarkdown from "react-markdown";
 import type { FeatureMessage } from "@/db/schema";
 import { PendingChangeCard } from "./pending-change-card";
 import { ClarificationCard } from "./clarification-card";
+import { BashResultCard } from "./bash-result-card";
 
 // DB message content types
 type MessageContent =
   | { text: string }
-  | { toolName: "generatePRD"; markdown: string }
-  | { toolName: "updatePRD"; markdown: string; changeSummary: string };
+  | { toolName: "generateSpec"; markdown: string }
+  | { toolName: "updateSpec"; markdown: string; changeSummary: string };
 
 interface FeatureChatProps {
   projectId: string;
@@ -36,19 +37,19 @@ interface FeatureChatProps {
   featureTitle?: string;
   initialIdea?: string;
   initialMessages?: FeatureMessage[];
-  /** Called when AI generates initial PRD (markdown) */
-  onPRDGenerated: (markdown: string) => void;
-  /** Called when AI proposes changes to existing PRD */
+  /** Called when AI generates initial spec (markdown) */
+  onSpecGenerated: (markdown: string) => void;
+  /** Called when AI proposes changes to existing spec */
   onPendingChange: (markdown: string, changeSummary: string) => void;
   /** Called when user accepts pending change */
   onAcceptChange: () => void;
   /** Called when user rejects pending change */
   onRejectChange: () => void;
-  /** Current PRD markdown to send to AI for context */
-  currentPrdMarkdown?: string;
+  /** Current spec markdown to send to AI for context */
+  currentSpecMarkdown?: string;
   /** Whether there's a pending change awaiting review */
   hasPendingChange?: boolean;
-  hasSavedPrd?: boolean;
+  hasSavedSpec?: boolean;
   /** Called when session is reset to clear parent state */
   onSessionReset?: () => void;
 }
@@ -72,14 +73,14 @@ function dbToDisplayMessages(dbMessages: FeatureMessage[]): DisplayMessage[] {
     if ("text" in content) {
       parts.push({ type: "text", text: content.text });
     } else if ("toolName" in content) {
-      if (content.toolName === "generatePRD") {
+      if (content.toolName === "generateSpec") {
         parts.push({
-          type: "tool-generatePRD",
+          type: "tool-generateSpec",
           markdown: content.markdown
         });
-      } else if (content.toolName === "updatePRD") {
+      } else if (content.toolName === "updateSpec") {
         parts.push({
-          type: "tool-updatePRD",
+          type: "tool-updateSpec",
           markdown: content.markdown,
           changeSummary: content.changeSummary
         });
@@ -104,14 +105,14 @@ function extractMessageContent(msg: DisplayMessage): MessageContent | null {
     if (part.type === "activity") {
       continue;
     }
-    if (part.type === "tool-generatePRD") {
+    if (part.type === "tool-generateSpec") {
       if (part.markdown) {
-        return { toolName: "generatePRD" as const, markdown: part.markdown };
+        return { toolName: "generateSpec" as const, markdown: part.markdown };
       }
     }
-    if (part.type === "tool-updatePRD") {
+    if (part.type === "tool-updateSpec") {
       if (part.markdown && part.changeSummary) {
-        return { toolName: "updatePRD" as const, markdown: part.markdown, changeSummary: part.changeSummary };
+        return { toolName: "updateSpec" as const, markdown: part.markdown, changeSummary: part.changeSummary };
       }
     }
   }
@@ -123,22 +124,22 @@ export function FeatureChat({
   featureTitle,
   initialIdea,
   initialMessages = [],
-  onPRDGenerated,
+  onSpecGenerated,
   onPendingChange,
   onAcceptChange,
   onRejectChange,
-  currentPrdMarkdown,
+  currentSpecMarkdown,
   hasPendingChange = false,
-  hasSavedPrd = false,
+  hasSavedSpec = false,
   onSessionReset
 }: FeatureChatProps) {
   const [input, setInput] = useState("");
-  // Track resolved updatePRD tool calls: key is message-part key, value is resolution status
+  // Track resolved updateSpec tool calls: key is message-part key, value is resolution status
   const [resolvedChanges, setResolvedChanges] = useState<Map<string, "accepted" | "rejected">>(new Map());
   const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const hasSentInitialIdeaRef = useRef(false);
-  const hasNotifiedPRDRef = useRef(false);
+  const hasNotifiedSpecRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const savedMessageIdsRef = useRef<Set<string>>(new Set());
@@ -166,22 +167,22 @@ export function FeatureChat({
     }
   }, [hydratedMessages, contextMessages.length, setContextMessages]);
 
-  // Wrapper to include PRD callbacks when sending messages
+  // Wrapper to include spec callbacks when sending messages
   const sendMessage = useCallback(
     (content: { text: string }) => {
       contextSendMessage(content, {
-        currentPrdMarkdown,
+        currentSpecMarkdown,
         featureTitle,
-        onPRDGenerated: hasSavedPrd ? undefined : onPRDGenerated,
+        onSpecGenerated: hasSavedSpec ? undefined : onSpecGenerated,
         onPendingChange: hasPendingChange ? undefined : onPendingChange
       });
     },
     [
       contextSendMessage,
-      currentPrdMarkdown,
+      currentSpecMarkdown,
       featureTitle,
-      hasSavedPrd,
-      onPRDGenerated,
+      hasSavedSpec,
+      onSpecGenerated,
       hasPendingChange,
       onPendingChange
     ]
@@ -268,23 +269,23 @@ export function FeatureChat({
     }
   }, [status, contextMessages, saveMessage]);
 
-  // Watch for PRD generation in hydrated messages (from DB reload)
+  // Watch for spec generation in hydrated messages (from DB reload)
   useEffect(() => {
-    if (hasNotifiedPRDRef.current) return;
-    if (hasSavedPrd) return;
+    if (hasNotifiedSpecRef.current) return;
+    if (hasSavedSpec) return;
 
     for (const message of hydratedMessages) {
       if (message.role === "assistant" && message.parts) {
         for (const part of message.parts) {
-          if (part.type === "tool-generatePRD" && part.markdown) {
-            hasNotifiedPRDRef.current = true;
-            onPRDGenerated(part.markdown);
+          if (part.type === "tool-generateSpec" && part.markdown) {
+            hasNotifiedSpecRef.current = true;
+            onSpecGenerated(part.markdown);
             return;
           }
         }
       }
     }
-  }, [hydratedMessages, onPRDGenerated, hasSavedPrd]);
+  }, [hydratedMessages, onSpecGenerated, hasSavedSpec]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter sends, Shift+Enter for newline
@@ -337,7 +338,7 @@ export function FeatureChat({
         // Clear local refs to prevent stale state
         savedMessageIdsRef.current.clear();
         hasSentInitialIdeaRef.current = false;
-        hasNotifiedPRDRef.current = false;
+        hasNotifiedSpecRef.current = false;
         // Clear local state
         setResolvedChanges(new Map());
         clearMessages();
@@ -361,7 +362,7 @@ export function FeatureChat({
                 <PaperPlaneRightIcon weight="duotone" />
               </EmptyMedia>
               <EmptyTitle>Start a conversation</EmptyTitle>
-              <EmptyDescription>Ask questions about the PRD or request changes to refine it further.</EmptyDescription>
+              <EmptyDescription>Ask questions about the spec or request changes to refine it further.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
@@ -381,7 +382,7 @@ export function FeatureChat({
               // Don't deduplicate activity messages
               return true;
             }
-            if (part.type === "tool-generatePRD" || part.type === "tool-updatePRD") {
+            if (part.type === "tool-generateSpec" || part.type === "tool-updateSpec") {
               const key = `${part.type}-${part.markdown?.slice(0, 50) || ""}`;
               if (seenToolCalls.has(key)) return false;
               seenToolCalls.add(key);
@@ -393,7 +394,7 @@ export function FeatureChat({
           return (
             <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex gap-3 items-start"}>
               {message.role === "assistant" && <span className="w-2 h-2 rounded-full shrink-0 mt-1.5 bg-success" />}
-              <div className={message.role === "user" ? "max-w-[80%] space-y-3" : "flex-1 space-y-3"}>
+              <div className={message.role === "user" ? "max-w-[80%] space-y-3" : "flex-1 min-w-0 space-y-3"}>
                 {uniqueParts.map((part, i) => {
                   if (part.type === "text" && part.text) {
                     return (
@@ -420,15 +421,15 @@ export function FeatureChat({
                     );
                   }
 
-                  if (part.type === "tool-generatePRD") {
+                  if (part.type === "tool-generateSpec") {
                     return (
-                      <ToolResponse key={`${message.id}-${i}`} toolName="PRD Generated">  
-                        <span className="text-sm">PRD generated — check the editor</span>
+                      <ToolResponse key={`${message.id}-${i}`} toolName="Spec Generated">
+                        <span className="text-sm">Spec generated — check the editor</span>
                       </ToolResponse>
                     );
                   }
 
-                  if (part.type === "tool-updatePRD") {
+                  if (part.type === "tool-updateSpec") {
                     const changeSummary = part.changeSummary || "Changes proposed";
                     const updateKey = `${message.id}-${i}`;
                     const resolution = resolvedChanges.get(updateKey);
@@ -436,7 +437,7 @@ export function FeatureChat({
                     // Show status text if already resolved in this session
                     if (resolution) {
                       return (
-                        <ToolResponse key={updateKey} toolName="PRD Update">
+                        <ToolResponse key={updateKey} toolName="Spec Update">
                           <span className="text-sm">
                             {resolution === "accepted" ? "Changes applied" : "Changes discarded"}
                           </span>
@@ -447,7 +448,7 @@ export function FeatureChat({
                     // If no pending change (resolved in previous session or from DB), show as applied
                     if (!hasPendingChange) {
                       return (
-                        <ToolResponse key={updateKey} toolName="PRD Update">
+                        <ToolResponse key={updateKey} toolName="Spec Update">
                           <span className="text-sm">Changes applied</span>
                         </ToolResponse>
                       );
@@ -520,23 +521,12 @@ export function FeatureChat({
                   // Render bash command results
                   if (part.type === "bash-result") {
                     return (
-                      <div
+                      <BashResultCard
                         key={`${message.id}-${i}`}
-                        className="rounded-md bg-zinc-900 border border-zinc-700 overflow-hidden"
-                      >
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 border-b border-zinc-700">
-                          <TerminalIcon weight="bold" className="size-3 text-zinc-400" />
-                          <span className="text-xs font-mono text-zinc-400">{part.command || "Command output"}</span>
-                          {part.exitCode !== undefined && part.exitCode !== 0 && (
-                            <span className="text-xs font-mono text-red-400 ml-auto">exit {part.exitCode}</span>
-                          )}
-                        </div>
-                        {part.output && (
-                          <pre className="p-3 text-xs font-mono text-zinc-300 whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
-                            {part.output.length > 500 ? part.output.slice(0, 500) + "..." : part.output}
-                          </pre>
-                        )}
-                      </div>
+                        command={part.command}
+                        output={part.output}
+                        exitCode={part.exitCode}
+                      />
                     );
                   }
 
@@ -627,7 +617,7 @@ export function FeatureChat({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Reset Chat Session?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete all chat messages for this feature. Your PRD and feature data will
+                        This will permanently delete all chat messages for this feature. Your spec and feature data will
                         be preserved.
                       </AlertDialogDescription>
                     </AlertDialogHeader>

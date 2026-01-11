@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PRDEditor } from './prd-editor';
+import { SpecEditor } from './spec-editor';
 import { FeatureChat } from './feature-chat';
 import { AppHeader } from '@/components/layout/app-header';
 import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
@@ -31,8 +31,8 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   const editorRef = useRef<MDXEditorMethods>(null);
 
   const [currentTitle, setCurrentTitle] = useState(feature.title);
-  const [prdContent, setPrdContent] = useState(feature.prdMarkdown || '');
-  const [isLocked, setIsLocked] = useState(!feature.prdMarkdown);
+  const [specContent, setSpecContent] = useState(feature.specMarkdown || '');
+  const [isLocked, setIsLocked] = useState(!feature.specMarkdown);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [addIdeaOpen, setAddIdeaOpen] = useState(false);
@@ -48,9 +48,9 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   const [currentMessages, setCurrentMessages] = useState(initialMessages);
   const [currentInitialIdea, setCurrentInitialIdea] = useState(feature.initialIdea);
 
-  // Handle initial PRD generation from chat (markdown)
-  const handlePRDGenerated = useCallback((markdown: string) => {
-    setPrdContent(markdown);
+  // Handle initial spec generation from chat (markdown)
+  const handleSpecGenerated = useCallback((markdown: string) => {
+    setSpecContent(markdown);
     setIsLocked(false);
     setHasUnsavedChanges(true);
 
@@ -60,16 +60,16 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
     }
   }, []);
 
-  // Handle pending change from updatePRD tool
+  // Handle pending change from updateSpec tool
   const handlePendingChange = useCallback((proposed: string) => {
-    setOriginalMarkdown(prdContent);
+    setOriginalMarkdown(specContent);
     setProposedMarkdown(proposed);
-  }, [prdContent]);
+  }, [specContent]);
 
   // Handle accepting the proposed change
   const handleAcceptChange = useCallback(() => {
     if (proposedMarkdown) {
-      setPrdContent(proposedMarkdown);
+      setSpecContent(proposedMarkdown);
       setHasUnsavedChanges(true);
       // Don't call setMarkdown - the key change will remount the editor with new content
     }
@@ -114,20 +114,20 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
 
   // Handle editor content changes
   const handleContentChange = useCallback((markdown: string) => {
-    setPrdContent(markdown);
+    setSpecContent(markdown);
     setHasUnsavedChanges(true);
   }, []);
 
-  // Save PRD to API
+  // Save spec to API
   const handleSave = useCallback(async () => {
-    if (!prdContent.trim()) return;
+    if (!specContent.trim()) return;
 
     setSaveStatus('saving');
     try {
-      const response = await fetch(`/api/features/${feature.id}/prd`, {
+      const response = await fetch(`/api/features/${feature.id}/spec`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prdMarkdown: prdContent }),
+        body: JSON.stringify({ specMarkdown: specContent }),
       });
 
       if (response.ok) {
@@ -138,10 +138,10 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
         setSaveStatus('idle');
       }
     } catch (error) {
-      console.error('Failed to save PRD:', error);
+      console.error('Failed to save spec:', error);
       setSaveStatus('idle');
     }
-  }, [feature.id, prdContent]);
+  }, [feature.id, specContent]);
 
   // Auto-save on changes (debounced)
   useEffect(() => {
@@ -152,7 +152,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [prdContent, hasUnsavedChanges, isLocked, handleSave]);
+  }, [specContent, hasUnsavedChanges, isLocked, handleSave]);
 
   // Generate AI title on first view
   useEffect(() => {
@@ -179,12 +179,12 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
       <main className="flex-1 flex min-h-0">
         {/* Left Panel - Editor (60%) */}
         <div className="w-[60%] border-r border-border bg-card overflow-y-auto">
-          <PRDEditor
+          <SpecEditor
             ref={editorRef}
-            content={proposedMarkdown ?? prdContent}
+            content={proposedMarkdown ?? specContent}
             onChange={handleContentChange}
             isLocked={isLocked}
-            placeholder="The AI will generate a PRD here based on your conversation..."
+            placeholder="The AI will generate a spec here based on your conversation..."
             saveStatus={saveStatus}
             diffMarkdown={originalMarkdown ?? undefined}
             viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
@@ -205,14 +205,14 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
             featureId={feature.id}
             initialIdea={currentInitialIdea || undefined}
             initialMessages={currentMessages}
-            onPRDGenerated={handlePRDGenerated}
+            onSpecGenerated={handleSpecGenerated}
             onPendingChange={handlePendingChange}
             onAcceptChange={handleAcceptChange}
             onRejectChange={handleRejectChange}
             onSessionReset={handleSessionReset}
-            currentPrdMarkdown={prdContent}
+            currentSpecMarkdown={specContent}
             hasPendingChange={proposedMarkdown !== null}
-            hasSavedPrd={!!feature.prdMarkdown}
+            hasSavedSpec={!!feature.specMarkdown}
           />
         </div>
       </main>

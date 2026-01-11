@@ -19,8 +19,8 @@ export interface ClarificationQuestion {
 export type MessagePart =
   | { type: "text"; text: string }
   | { type: "activity"; message: string }
-  | { type: "tool-generatePRD"; markdown: string }
-  | { type: "tool-updatePRD"; markdown: string; changeSummary: string }
+  | { type: "tool-generateSpec"; markdown: string }
+  | { type: "tool-updateSpec"; markdown: string; changeSummary: string }
   | { type: "tool-use"; name: string; input: unknown }
   | { type: "file-search-result"; files: string[]; count: number }
   | { type: "file-read-result"; path: string; lineCount?: number }
@@ -36,8 +36,8 @@ export interface DisplayMessage {
 
 interface UseClaudeCodeChatOptions {
   featureId: string;
-  currentPrdMarkdown?: string;
-  onPRDGenerated?: (markdown: string) => void;
+  currentSpecMarkdown?: string;
+  onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
 }
 
@@ -75,8 +75,8 @@ interface SSEEvent {
 
 export function useClaudeCodeChat({
   featureId,
-  currentPrdMarkdown,
-  onPRDGenerated,
+  currentSpecMarkdown,
+  onSpecGenerated,
   onPendingChange
 }: UseClaudeCodeChatOptions) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -84,7 +84,7 @@ export function useClaudeCodeChat({
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageIdCounterRef = useRef(0);
-  const prdNotifiedRef = useRef(false);
+  const specNotifiedRef = useRef(false);
   const updateNotifiedRef = useRef(false);
 
   // Generate unique message IDs
@@ -134,7 +134,7 @@ export function useClaudeCodeChat({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: allMessages,
-            currentPrdMarkdown
+            currentSpecMarkdown
           }),
           signal: abortControllerRef.current.signal
         });
@@ -208,20 +208,20 @@ export function useClaudeCodeChat({
                     break;
 
                   case "tool_result":
-                    if (event.name === "generatePRD" && event.output?.markdown) {
+                    if (event.name === "generateSpec" && event.output?.markdown) {
                       assistantParts.push({
-                        type: "tool-generatePRD",
+                        type: "tool-generateSpec",
                         markdown: event.output.markdown
                       });
                       updateAssistantMessage();
                       // Notify parent
-                      if (!prdNotifiedRef.current && onPRDGenerated) {
-                        prdNotifiedRef.current = true;
-                        onPRDGenerated(event.output.markdown);
+                      if (!specNotifiedRef.current && onSpecGenerated) {
+                        specNotifiedRef.current = true;
+                        onSpecGenerated(event.output.markdown);
                       }
-                    } else if (event.name === "updatePRD" && event.output?.markdown && event.output?.changeSummary) {
+                    } else if (event.name === "updateSpec" && event.output?.markdown && event.output?.changeSummary) {
                       assistantParts.push({
-                        type: "tool-updatePRD",
+                        type: "tool-updateSpec",
                         markdown: event.output.markdown,
                         changeSummary: event.output.changeSummary
                       });
@@ -331,13 +331,13 @@ export function useClaudeCodeChat({
         abortControllerRef.current = null;
       }
     },
-    [featureId, currentPrdMarkdown, messages, generateId, onPRDGenerated, onPendingChange]
+    [featureId, currentSpecMarkdown, messages, generateId, onSpecGenerated, onPendingChange]
   );
 
   // Reset notification refs when messages change externally
   useEffect(() => {
     return () => {
-      prdNotifiedRef.current = false;
+      specNotifiedRef.current = false;
       updateNotifiedRef.current = false;
     };
   }, []);
@@ -347,7 +347,7 @@ export function useClaudeCodeChat({
     setMessages([]);
     setError(null);
     setStatus("idle");
-    prdNotifiedRef.current = false;
+    specNotifiedRef.current = false;
     updateNotifiedRef.current = false;
   }, []);
 

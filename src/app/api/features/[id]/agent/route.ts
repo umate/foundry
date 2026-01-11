@@ -95,7 +95,7 @@ export async function POST(
   // Parse request body
   const body = await req.json();
   const messages: ChatMessage[] = body.messages || [];
-  const currentPrdMarkdown: string | null = body.currentPrdMarkdown ?? null;
+  const currentSpecMarkdown: string | null = body.currentSpecMarkdown ?? null;
 
   if (!Array.isArray(messages)) {
     return new Response(JSON.stringify({ error: "Messages array required" }), {
@@ -123,7 +123,7 @@ export async function POST(
             stack: project.stack,
             repoPath: project.repoPath
           },
-          currentPrdMarkdown,
+          currentSpecMarkdown,
           messages
         )) {
           // Skip system init messages entirely
@@ -203,20 +203,20 @@ export async function POST(
                 const cmd = input.command || "";
                 const cmdPreview = cmd.length > 50 ? cmd.slice(0, 47) + "..." : cmd;
                 sendEvent({ type: "activity", message: `Running: ${cmdPreview}` });
-              } else if (toolCall.name === "mcp__foundry__generatePRD") {
-                // PRD generation - extract the markdown from tool input
+              } else if (toolCall.name === "mcp__foundry__generateSpec") {
+                // Spec generation - extract the markdown from tool input
                 const input = toolCall.input as { markdown: string };
                 sendEvent({
                   type: "tool_result",
-                  name: "generatePRD",
-                  output: { type: "prd", markdown: input.markdown }
+                  name: "generateSpec",
+                  output: { type: "spec", markdown: input.markdown }
                 });
-              } else if (toolCall.name === "mcp__foundry__updatePRD") {
-                // PRD update - extract markdown and summary
+              } else if (toolCall.name === "mcp__foundry__updateSpec") {
+                // Spec update - extract markdown and summary
                 const input = toolCall.input as { markdown: string; changeSummary: string };
                 sendEvent({
                   type: "tool_result",
-                  name: "updatePRD",
+                  name: "updateSpec",
                   output: { type: "update", markdown: input.markdown, changeSummary: input.changeSummary }
                 });
               } else if (toolCall.name === "AskUserQuestion" || toolCall.name === "mcp__foundry__askClarification") {
