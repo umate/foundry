@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { FileText, ListChecks, X } from '@phosphor-icons/react';
+import { FileText, ListChecks, Trash, X } from '@phosphor-icons/react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +68,9 @@ export function FeatureChatPanel({
 
   // Session reset key
   const [messagesKey, setMessagesKey] = useState(0);
+
+  // Delete dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const isOpen = featureId !== null;
 
@@ -161,6 +175,27 @@ export function FeatureChatPanel({
     setProposedMarkdown(null);
     setOriginalMarkdown(null);
   }, []);
+
+  // Handle feature deletion (archive)
+  const handleDeleteFeature = useCallback(async () => {
+    if (!featureId) return;
+
+    try {
+      const response = await fetch(`/api/features/${featureId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' }),
+      });
+
+      if (response.ok) {
+        setShowDeleteDialog(false);
+        onClose();
+        onFeatureUpdated();
+      }
+    } catch (error) {
+      console.error('Failed to archive feature:', error);
+    }
+  }, [featureId, onClose, onFeatureUpdated]);
 
   // Save PRD
   const savePrd = useCallback(async () => {
@@ -361,6 +396,36 @@ export function FeatureChatPanel({
                     >
                       <FileText weight="bold" className="size-4" />
                     </Button>
+                    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-muted-foreground hover:text-destructive"
+                          title="Delete feature"
+                        >
+                          <Trash weight="bold" className="size-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Feature?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will archive &ldquo;{feature.title}&rdquo; and remove it from your project. You can restore it later from archived features.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel asChild>
+                            <Button variant="outline">Cancel</Button>
+                          </AlertDialogCancel>
+                          <AlertDialogAction asChild>
+                            <Button variant="destructive" onClick={handleDeleteFeature}>
+                              Delete
+                            </Button>
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -379,6 +444,7 @@ export function FeatureChatPanel({
                   key={messagesKey}
                   projectId={projectId}
                   featureId={feature.id}
+                  featureTitle={feature.title}
                   initialIdea={feature.initialIdea || undefined}
                   initialMessages={messages}
                   onPRDGenerated={handlePRDGenerated}

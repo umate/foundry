@@ -8,6 +8,7 @@ import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
 import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
 import { ProjectSettingsDialog } from '@/components/project/project-settings-dialog';
 import { FeatureChatPanel } from '@/components/project/feature-chat-panel';
+import { BackgroundStreamProvider, useBackgroundStream } from '@/components/project/background-stream-context';
 import { FeaturesByStatus, Feature, mapDbStatusToUi } from '@/types/feature';
 
 interface ProjectData {
@@ -134,6 +135,70 @@ export default function ProjectPage({
   if (!project) {
     return null;
   }
+
+  return (
+    <BackgroundStreamProvider>
+      <ProjectPageContent
+        project={project}
+        selectedFeatureId={selectedFeatureId}
+        setSelectedFeatureId={setSelectedFeatureId}
+        addIdeaOpen={addIdeaOpen}
+        setAddIdeaOpen={setAddIdeaOpen}
+        createProjectOpen={createProjectOpen}
+        setCreateProjectOpen={setCreateProjectOpen}
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
+        handleIdeaAdded={handleIdeaAdded}
+        handleFeatureUpdated={handleFeatureUpdated}
+        handleFeatureClick={handleFeatureClick}
+        handlePanelClose={handlePanelClose}
+        handleProjectCreated={handleProjectCreated}
+        handleProjectUpdated={handleProjectUpdated}
+      />
+    </BackgroundStreamProvider>
+  );
+}
+
+// Inner component that can use the background stream context
+function ProjectPageContent({
+  project,
+  selectedFeatureId,
+  setSelectedFeatureId,
+  addIdeaOpen,
+  setAddIdeaOpen,
+  createProjectOpen,
+  setCreateProjectOpen,
+  settingsOpen,
+  setSettingsOpen,
+  handleIdeaAdded,
+  handleFeatureUpdated,
+  handleFeatureClick,
+  handlePanelClose,
+  handleProjectCreated,
+  handleProjectUpdated,
+}: {
+  project: ProjectData;
+  selectedFeatureId: string | null;
+  setSelectedFeatureId: (id: string | null) => void;
+  addIdeaOpen: boolean;
+  setAddIdeaOpen: (open: boolean) => void;
+  createProjectOpen: boolean;
+  setCreateProjectOpen: (open: boolean) => void;
+  settingsOpen: boolean;
+  setSettingsOpen: (open: boolean) => void;
+  handleIdeaAdded: () => void;
+  handleFeatureUpdated: () => void;
+  handleFeatureClick: (featureId: string) => void;
+  handlePanelClose: () => void;
+  handleProjectCreated: (newProjectId: string) => void;
+  handleProjectUpdated: (updated: { id: string; name: string; description: string | null; stack: string | null; repoPath: string | null; widgetApiKey: string | null }) => void;
+}) {
+  const { setOpenFeaturePanel } = useBackgroundStream();
+
+  // Register the callback to open feature panel from toast
+  useEffect(() => {
+    setOpenFeaturePanel(setSelectedFeatureId);
+  }, [setOpenFeaturePanel, setSelectedFeatureId]);
 
   return (
     <div className="h-screen flex flex-col bg-background">

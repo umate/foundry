@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { useClaudeCodeChat, type DisplayMessage } from "@/lib/hooks/use-claude-code-chat";
+import { useFeatureStream } from "@/components/project/background-stream-context";
+import type { DisplayMessage, ClarificationQuestion } from "@/lib/hooks/use-claude-code-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, TerminalIcon, FileIcon } from "@phosphor-icons/react";
@@ -16,13 +17,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import ReactMarkdown from "react-markdown";
 import type { FeatureMessage } from "@/db/schema";
 import { PendingChangeCard } from "./pending-change-card";
 import { ClarificationCard } from "./clarification-card";
-import type { ClarificationQuestion } from "@/lib/hooks/use-claude-code-chat";
 
 // DB message content types
 type MessageContent =
@@ -33,6 +33,7 @@ type MessageContent =
 interface FeatureChatProps {
   projectId: string;
   featureId: string;
+  featureTitle?: string;
   initialIdea?: string;
   initialMessages?: FeatureMessage[];
   /** Called when AI generates initial PRD (markdown) */
@@ -119,6 +120,7 @@ function extractMessageContent(msg: DisplayMessage): MessageContent | null {
 
 export function FeatureChat({
   featureId,
+  featureTitle,
   initialIdea,
   initialMessages = [],
   onPRDGenerated,
@@ -144,25 +146,51 @@ export function FeatureChat({
   // Convert initial DB messages to display format
   const hydratedMessages = useMemo(() => dbToDisplayMessages(initialMessages), [initialMessages]);
 
-  // Use Claude Code chat hook
+  // Use background stream context for persistent streaming
   const {
-    messages: chatMessages,
-    sendMessage,
+    messages: contextMessages,
     status,
     error,
+    sendMessage: contextSendMessage,
     stop,
-    clearMessages
-  } = useClaudeCodeChat({
-    featureId,
-    currentPrdMarkdown,
-    onPRDGenerated: hasSavedPrd ? undefined : onPRDGenerated,
-    onPendingChange: hasPendingChange ? undefined : onPendingChange
-  });
+    clearMessages,
+    setMessages: setContextMessages
+  } = useFeatureStream(featureId);
 
-  // Combine hydrated messages (from DB) with new chat messages
+  // Hydrate context with DB messages on mount
+  const hasHydratedRef = useRef(false);
+  useEffect(() => {
+    if (!hasHydratedRef.current && hydratedMessages.length > 0 && contextMessages.length === 0) {
+      hasHydratedRef.current = true;
+      setContextMessages(hydratedMessages);
+    }
+  }, [hydratedMessages, contextMessages.length, setContextMessages]);
+
+  // Wrapper to include PRD callbacks when sending messages
+  const sendMessage = useCallback(
+    (content: { text: string }) => {
+      contextSendMessage(content, {
+        currentPrdMarkdown,
+        featureTitle,
+        onPRDGenerated: hasSavedPrd ? undefined : onPRDGenerated,
+        onPendingChange: hasPendingChange ? undefined : onPendingChange
+      });
+    },
+    [
+      contextSendMessage,
+      currentPrdMarkdown,
+      featureTitle,
+      hasSavedPrd,
+      onPRDGenerated,
+      hasPendingChange,
+      onPendingChange
+    ]
+  );
+
+  // Use context messages, or hydrated messages if context is empty
   const messages: DisplayMessage[] = useMemo(() => {
-    return [...hydratedMessages, ...chatMessages];
-  }, [chatMessages, hydratedMessages]);
+    return contextMessages.length > 0 ? contextMessages : hydratedMessages;
+  }, [contextMessages, hydratedMessages]);
 
   const isLoading = status === "streaming";
 
@@ -213,17 +241,22 @@ export function FeatureChat({
 
   // Send initial idea when component mounts (only if no existing messages)
   useEffect(() => {
-    if (initialIdea && !hasSentInitialIdeaRef.current && hydratedMessages.length === 0 && chatMessages.length === 0) {
+    if (
+      initialIdea &&
+      !hasSentInitialIdeaRef.current &&
+      hydratedMessages.length === 0 &&
+      contextMessages.length === 0
+    ) {
       hasSentInitialIdeaRef.current = true;
       saveMessage("user", { text: initialIdea });
       sendMessage({ text: initialIdea });
     }
-  }, [initialIdea, hydratedMessages.length, chatMessages.length, sendMessage, saveMessage]);
+  }, [initialIdea, hydratedMessages.length, contextMessages.length, sendMessage, saveMessage]);
 
   // Save assistant messages when streaming completes
   useEffect(() => {
     if (status === "ready") {
-      for (const msg of chatMessages) {
+      for (const msg of contextMessages) {
         if (msg.role === "assistant" && !savedMessageIdsRef.current.has(msg.id)) {
           savedMessageIdsRef.current.add(msg.id);
           const content = extractMessageContent(msg);
@@ -233,7 +266,7 @@ export function FeatureChat({
         }
       }
     }
-  }, [status, chatMessages, saveMessage]);
+  }, [status, contextMessages, saveMessage]);
 
   // Watch for PRD generation in hydrated messages (from DB reload)
   useEffect(() => {
@@ -328,9 +361,7 @@ export function FeatureChat({
                 <PaperPlaneRightIcon weight="duotone" />
               </EmptyMedia>
               <EmptyTitle>Start a conversation</EmptyTitle>
-              <EmptyDescription>
-                Ask questions about the PRD or request changes to refine it further.
-              </EmptyDescription>
+              <EmptyDescription>Ask questions about the PRD or request changes to refine it further.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
@@ -361,9 +392,7 @@ export function FeatureChat({
 
           return (
             <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex gap-3 items-start"}>
-              {message.role === "assistant" && (
-                <span className="w-2 h-2 rounded-full shrink-0 mt-1.5 bg-success" />
-              )}
+              {message.role === "assistant" && <span className="w-2 h-2 rounded-full shrink-0 mt-1.5 bg-success" />}
               <div className={message.role === "user" ? "max-w-[80%] space-y-3" : "flex-1 space-y-3"}>
                 {uniqueParts.map((part, i) => {
                   if (part.type === "text" && part.text) {
@@ -497,13 +526,9 @@ export function FeatureChat({
                       >
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 border-b border-zinc-700">
                           <TerminalIcon weight="bold" className="size-3 text-zinc-400" />
-                          <span className="text-xs font-mono text-zinc-400">
-                            {part.command || "Command output"}
-                          </span>
+                          <span className="text-xs font-mono text-zinc-400">{part.command || "Command output"}</span>
                           {part.exitCode !== undefined && part.exitCode !== 0 && (
-                            <span className="text-xs font-mono text-red-400 ml-auto">
-                              exit {part.exitCode}
-                            </span>
+                            <span className="text-xs font-mono text-red-400 ml-auto">exit {part.exitCode}</span>
                           )}
                         </div>
                         {part.output && (
@@ -518,13 +543,8 @@ export function FeatureChat({
                   // Render raw/debug messages as JSON
                   if (part.type === "raw") {
                     return (
-                      <div
-                        key={`${message.id}-${i}`}
-                        className="rounded-md bg-muted p-2 overflow-x-auto"
-                      >
-                        <div className="text-xs font-mono text-muted-foreground mb-1">
-                          [{part.messageType}]
-                        </div>
+                      <div key={`${message.id}-${i}`} className="rounded-md bg-muted p-2 overflow-x-auto">
+                        <div className="text-xs font-mono text-muted-foreground mb-1">[{part.messageType}]</div>
                         <pre className="text-xs font-mono whitespace-pre-wrap break-all">
                           {JSON.stringify(part.data, null, 2)}
                         </pre>
@@ -554,7 +574,7 @@ export function FeatureChat({
         {isLoading && (
           <div className="flex gap-3 items-start">
             <span className="w-2 h-2 rounded-full shrink-0 mt-2 bg-secondary animate-pulse" />
-            <p className="text-sm pt-0.5 font-bold text-muted-foreground/50 animate-thinking-pulse">
+            <p className="text-sm pt-0.5 font-medium text-muted-foreground/50 animate-thinking-pulse">
               {thinkingPhrase}
             </p>
           </div>

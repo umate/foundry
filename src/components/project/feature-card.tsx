@@ -4,7 +4,9 @@ import { Lightbulb, Play, CheckCircle, Target } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Feature, FeatureStatus } from '@/types/feature';
 import { useDrag } from './drag-context';
+import { useBackgroundStream } from './background-stream-context';
 import { SubtaskProgress } from './subtask-progress';
+import { StreamIndicator } from './stream-indicator';
 
 interface FeatureCardProps {
   feature: Feature;
@@ -29,6 +31,8 @@ export function FeatureCard({
   onFeatureClick,
 }: FeatureCardProps) {
   const { setIsDragging, setDraggedFeatureId } = useDrag();
+  const { isStreaming } = useBackgroundStream();
+  const hasActiveStream = isStreaming(feature.id);
 
   const handleCardClick = () => {
     onFeatureClick(feature.id);
@@ -57,8 +61,11 @@ export function FeatureCard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={handleCardClick}
-      className="p-3 cursor-grab active:cursor-grabbing hover:bg-card transition-colors group border-b border-foreground/5"
+      className="relative p-3 cursor-grab active:cursor-grabbing hover:bg-card transition-colors group border-b border-foreground/5"
     >
+      {/* Stream Indicator */}
+      {hasActiveStream && <StreamIndicator className="absolute top-2 right-2" />}
+
       {/* Header: Icon + Title */}
       <div className="flex items-start gap-2 mb-1">
         <div className="mt-0.5">{getFeatureIcon(feature.status)}</div>

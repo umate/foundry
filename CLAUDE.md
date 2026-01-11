@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 # Development
 bun dev          # Start development server (localhost:3000)
+bun add <package> # Add a package to the project
 bun run build    # Production build
 bun run lint     # Run ESLint
 
