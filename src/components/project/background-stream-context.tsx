@@ -219,10 +219,11 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
 
   // Cleanup on unmount
   useEffect(() => {
+    const controllers = abortControllersRef.current;
     return () => {
       // Abort all streams when provider unmounts
-      abortControllersRef.current.forEach(controller => controller.abort());
-      abortControllersRef.current.clear();
+      controllers.forEach(controller => controller.abort());
+      controllers.clear();
     };
   }, []);
 
@@ -276,14 +277,14 @@ export function useFeatureStream(featureId: string) {
 
 // Hook for tracking open panels (used by chat panel)
 export function useTrackOpenPanel(featureId: string | null) {
-  const context = useBackgroundStream();
+  const { registerOpenPanel, unregisterOpenPanel } = useBackgroundStream();
 
   useEffect(() => {
     if (featureId) {
-      context.registerOpenPanel(featureId);
+      registerOpenPanel(featureId);
       return () => {
-        context.unregisterOpenPanel(featureId);
+        unregisterOpenPanel(featureId);
       };
     }
-  }, [featureId, context]);
+  }, [featureId, registerOpenPanel, unregisterOpenPanel]);
 }
