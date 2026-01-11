@@ -1,12 +1,13 @@
 'use client';
 
 import { use, useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AppHeader } from '@/components/layout/app-header';
 import { PanelBoard } from '@/components/project/panel-board';
 import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
 import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
 import { ProjectSettingsDialog } from '@/components/project/project-settings-dialog';
+import { FeatureChatPanel } from '@/components/project/feature-chat-panel';
 import { FeaturesByStatus, Feature, mapDbStatusToUi } from '@/types/feature';
 
 interface ProjectData {
@@ -31,11 +32,21 @@ export default function ProjectPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [addIdeaOpen, setAddIdeaOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
+
+  // Auto-open panel from URL query param
+  useEffect(() => {
+    const featureParam = searchParams.get('feature');
+    if (featureParam) {
+      setSelectedFeatureId(featureParam);
+    }
+  }, [searchParams]);
 
   const loadProject = useCallback(async () => {
     try {
@@ -85,6 +96,18 @@ export default function ProjectPage({
     loadProject();
   };
 
+  const handleFeatureClick = (featureId: string) => {
+    setSelectedFeatureId(featureId);
+  };
+
+  const handlePanelClose = () => {
+    setSelectedFeatureId(null);
+    // Clear URL param when closing panel
+    if (searchParams.get('feature')) {
+      router.replace(`/projects/${id}`);
+    }
+  };
+
   const handleProjectCreated = (newProjectId: string) => {
     setCreateProjectOpen(false);
     router.push(`/projects/${newProjectId}`);
@@ -124,8 +147,8 @@ export default function ProjectPage({
 
       <PanelBoard
         features={project.features}
-        projectId={project.id}
         onFeatureUpdated={handleFeatureUpdated}
+        onFeatureClick={handleFeatureClick}
       />
 
       <AddIdeaDialog
@@ -146,6 +169,18 @@ export default function ProjectPage({
         onOpenChange={setSettingsOpen}
         project={project}
         onUpdate={handleProjectUpdated}
+      />
+
+      <FeatureChatPanel
+        featureId={selectedFeatureId}
+        projectId={project.id}
+        project={{
+          name: project.name,
+          description: project.description,
+          stack: project.stack,
+        }}
+        onClose={handlePanelClose}
+        onFeatureUpdated={handleFeatureUpdated}
       />
     </div>
   );

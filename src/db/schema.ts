@@ -19,6 +19,14 @@ export const projects = pgTable('projects', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// SubTask type for checklist items within features
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  order: number;
+}
+
 export const features = pgTable('features', {
   id: uuid('id').defaultRandom().primaryKey(),
   projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
@@ -31,6 +39,8 @@ export const features = pgTable('features', {
   agentSpec: text('agent_spec'), // Original AI-generated PRD as JSON
   prdMarkdown: text('prd_markdown'), // User-editable PRD as markdown
   initialIdea: text('initial_idea'), // The raw idea text user submitted
+  summary: text('summary'), // AI-generated 1-2 sentence summary for card display
+  subtasks: jsonb('subtasks').$type<SubTask[]>().default([]), // Checklist items
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

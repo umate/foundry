@@ -1,10 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateText, Output } from "ai";
 import { featureRepository } from "@/db/repositories/feature.repository";
 import { z } from "zod";
 
 const updatePRDSchema = z.object({
   prdMarkdown: z.string()
 });
+
+const summarySchema = z.object({
+  summary: z.string().describe('A concise 1-2 sentence summary of the feature'),
+});
+
+const SUMMARY_SYSTEM_PROMPT = `Generate a concise summary of this PRD for display on a Kanban card.
+
+Requirements:
+- Maximum 1-2 sentences
+- Focus on what the feature does and its main benefit
+- Use plain language, avoid technical jargon
+- Be specific, not generic
+
+Example PRD:
+"# User Authentication\n## Problem\nUsers need to log in securely.\n## Solution\nImplement OAuth with Google and GitHub providers."
+
+Summary: "Secure login system using OAuth with Google and GitHub, enabling users to sign in with their existing accounts."`;
+
+async function generateSummary(prdMarkdown: string): Promise<string | null> {
+  try {
+    // Skip if PRD is too short to be meaningful
+    if (prdMarkdown.length < 50) {
+      return null;
+    }
+
+    const { output } = await generateText({
+      model: 'google/gemini-2.0-flash',
+      output: Output.object({ schema: summarySchema }),
+      system: SUMMARY_SYSTEM_PROMPT,
+      prompt: prdMarkdown,
+      temperature: 0.3,
+    });
+
+    return output.summary;
+  } catch (error) {
+    console.error('Summary generation failed:', error);
+    return null;
+  }
+}
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -20,9 +60,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Feature not found" }, { status: 404 });
     }
 
-    // Update the feature's PRD markdown
+    // Generate summary from PRD (async, non-blocking)
+    const summary = await generateSummary(prdMarkdown);
+
+    // Update the feature's PRD markdown and summary
     const updatedFeature = await featureRepository.update(featureId, {
-      prdMarkdown
+      prdMarkdown,
+      ...(summary ? { summary } : {}),
     });
 
     return NextResponse.json({ feature: updatedFeature });

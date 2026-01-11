@@ -270,12 +270,12 @@ function QuestionOptions({
     const selectedLabels = (selection as string[]) || [];
 
     return (
-      <div className="space-y-1">
+      <div className="flex flex-col gap-0.5">
         {question.options.map((option, optionIndex) => (
           <label
             key={optionIndex}
             className={cn(
-              "flex items-start gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
+              "flex items-start gap-2 px-2 py-1 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
               selectedLabels.includes(option.label) && "bg-muted",
               disabled && "opacity-50 cursor-not-allowed"
             )}
@@ -289,9 +289,9 @@ function QuestionOptions({
               className="mt-0.5"
             />
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-mono">{option.label}</div>
+              <div className="text-sm font-mono leading-tight">{option.label}</div>
               {option.description && (
-                <div className="text-xs text-muted-foreground">{option.description}</div>
+                <div className="text-xs text-muted-foreground leading-tight">{option.description}</div>
               )}
             </div>
           </label>
@@ -300,7 +300,7 @@ function QuestionOptions({
         {/* Other option */}
         <label
           className={cn(
-            "flex items-start gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
+            "flex items-start gap-2 px-2 py-1 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
             selectedLabels.includes(OTHER_OPTION) && "bg-muted",
             disabled && "opacity-50 cursor-not-allowed"
           )}
@@ -325,22 +325,22 @@ function QuestionOptions({
       value={(selection as string) || ""}
       onValueChange={(value) => onSingleSelect(questionIndex, value)}
       disabled={disabled}
-      className="space-y-1"
+      className="gap-0.5"
     >
       {question.options.map((option, optionIndex) => (
         <label
           key={optionIndex}
           className={cn(
-            "flex items-start gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
+            "flex items-start gap-2 px-2 py-1 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
             selection === option.label && "bg-muted",
             disabled && "opacity-50 cursor-not-allowed"
           )}
         >
           <RadioGroupItem value={option.label} className="mt-0.5" />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-mono">{option.label}</div>
+            <div className="text-sm font-mono leading-tight">{option.label}</div>
             {option.description && (
-              <div className="text-xs text-muted-foreground">{option.description}</div>
+              <div className="text-xs text-muted-foreground leading-tight">{option.description}</div>
             )}
           </div>
         </label>
@@ -349,7 +349,7 @@ function QuestionOptions({
       {/* Other option */}
       <label
         className={cn(
-          "flex items-start gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
+          "flex items-start gap-2 px-2 py-1 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
           selection === OTHER_OPTION && "bg-muted",
           disabled && "opacity-50 cursor-not-allowed"
         )}

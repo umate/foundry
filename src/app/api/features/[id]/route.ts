@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { featureRepository } from '@/db/repositories/feature.repository';
 import { z } from 'zod';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const feature = await featureRepository.findById(id);
+
+    if (!feature) {
+      return NextResponse.json(
+        { error: 'Feature not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(feature);
+  } catch (error) {
+    console.error('Failed to fetch feature:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch feature' },
+      { status: 500 }
+    );
+  }
+}
+
 const updateFeatureSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),

@@ -1,118 +1,93 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Trash, PencilSimple } from '@phosphor-icons/react/dist/ssr';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Lightbulb, Play, CheckCircle, Target } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
-import { EditFeatureDialog } from './edit-feature-dialog';
-
-interface Feature {
-  id: string;
-  title: string;
-  description: string | null;
-  status: 'idea' | 'scoped' | 'current' | 'done';
-  priority: number;
-  requestCount: number;
-}
+import { Feature, FeatureStatus } from '@/types/feature';
+import { useDrag } from './drag-context';
+import { SubtaskProgress } from './subtask-progress';
 
 interface FeatureCardProps {
   feature: Feature;
-  projectId: string;
-  onUpdated: () => void;
+  onFeatureClick: (featureId: string) => void;
 }
 
-export function FeatureCard({ feature, projectId, onUpdated }: FeatureCardProps) {
-  const router = useRouter();
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+const getFeatureIcon = (status: FeatureStatus) => {
+  switch (status) {
+    case 'idea':
+      return <Lightbulb className="size-4 text-secondary shrink-0" />;
+    case 'scoped':
+      return <Target className="size-4 text-secondary shrink-0" />;
+    case 'current':
+      return <Play className="size-4 text-secondary shrink-0" />;
+    case 'done':
+      return <CheckCircle className="size-4 text-secondary shrink-0" />;
+  }
+};
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this feature?')) {
-      return;
-    }
-
-    setDeleting(true);
-    try {
-      const response = await fetch(`/api/features/${feature.id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        onUpdated();
-      }
-    } catch (error) {
-      console.error('Failed to delete feature:', error);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handleEditSuccess = () => {
-    setEditOpen(false);
-    onUpdated();
-  };
+export function FeatureCard({
+  feature,
+  onFeatureClick,
+}: FeatureCardProps) {
+  const { setIsDragging, setDraggedFeatureId } = useDrag();
 
   const handleCardClick = () => {
-    router.push(`/projects/${projectId}/features/${feature.id}`);
+    onFeatureClick(feature.id);
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('featureId', feature.id);
+    e.dataTransfer.setData('featureTitle', feature.title);
+    e.dataTransfer.setData('sourceStatus', feature.status);
+    e.dataTransfer.effectAllowed = 'move';
+    setIsDragging(true);
+    setDraggedFeatureId(feature.id);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedFeatureId(null);
+  };
+
+  const completedTasks = feature.subtasks?.filter(t => t.completed).length ?? 0;
+  const totalTasks = feature.subtasks?.length ?? 0;
+
   return (
-    <>
-      <Card
-        className="p-4 hover:border-[#E85102]/50 transition-colors cursor-pointer"
-        onClick={handleCardClick}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-mono font-bold text-foreground uppercase tracking-wider mb-1">
-              {feature.title}
-            </h3>
-            {feature.description && (
-              <p className="text-sm text-foreground/70 mb-2">{feature.description}</p>
-            )}
-            <div className="flex gap-2 flex-wrap">
-              {feature.requestCount > 0 && (
-                <Badge variant="secondary">
-                  {feature.requestCount} request{feature.requestCount !== 1 ? 's' : ''}
-                </Badge>
-              )}
-            </div>
-          </div>
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onClick={handleCardClick}
+      className="p-3 cursor-grab active:cursor-grabbing hover:bg-card transition-colors group border-b border-foreground/5"
+    >
+      {/* Header: Icon + Title */}
+      <div className="flex items-start gap-2 mb-1">
+        <div className="mt-0.5">{getFeatureIcon(feature.status)}</div>
+        <span className="flex-1 font-sans-serif text-sm font-medium line-clamp-2 leading-tight">
+          {feature.title}
+        </span>
+      </div>
 
-          <div className="flex gap-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditOpen(true);
-              }}
-            >
-              <PencilSimple weight="bold" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete();
-              }}
-              disabled={deleting}
-            >
-              <Trash weight="bold" />
-            </Button>
-          </div>
+      {/* Summary */}
+      {feature.summary && (
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-2 pl-6">
+          {feature.summary}
+        </p>
+      )}
+
+      {/* Footer: Progress + Request Count */}
+      <div className="flex items-center justify-between pl-6">
+        <div className="flex items-center gap-2">
+          {totalTasks > 0 && (
+            <SubtaskProgress completed={completedTasks} total={totalTasks} />
+          )}
         </div>
-      </Card>
 
-      <EditFeatureDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        feature={feature}
-        onSuccess={handleEditSuccess}
-      />
-    </>
+        {feature.requestCount > 0 && (
+          <Badge variant="outline" className="h-5 text-[10px] shrink-0">
+            {feature.requestCount} {feature.requestCount === 1 ? 'request' : 'requests'}
+          </Badge>
+        )}
+      </div>
+    </div>
   );
 }

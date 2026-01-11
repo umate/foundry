@@ -4,6 +4,14 @@ export type FeatureStatus = 'idea' | 'scoped' | 'current' | 'done';
 // 'archived' is used for soft-deleted features (not shown in UI)
 export type FeatureStatusDb = 'idea' | 'scoped' | 'ready' | 'done' | 'archived';
 
+// SubTask type for checklist items within features
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  order: number;
+}
+
 export interface Feature {
   id: string;
   title: string;
@@ -11,6 +19,8 @@ export interface Feature {
   status: FeatureStatus;
   priority: number;
   requestCount: number;
+  summary: string | null;
+  subtasks: SubTask[];
 }
 
 export interface FeaturesByStatus {

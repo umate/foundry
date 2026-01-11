@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { GearSix, Lightbulb, Target, Play, CheckCircle } from '@phosphor-icons/react';
 import { Feature, FeatureStatus, STATUS_LABELS } from '@/types/feature';
-import { CompactFeatureRow } from './compact-feature-row';
+import { FeatureCard } from './feature-card';
 
 interface StatusPanelProps {
   status: FeatureStatus;
   features: Feature[];
-  projectId: string;
   onFeatureUpdated: () => void;
+  onFeatureClick: (featureId: string) => void;
 }
 
 const getStatusIcon = (status: FeatureStatus) => {
@@ -28,8 +28,8 @@ const getStatusIcon = (status: FeatureStatus) => {
 export function StatusPanel({
   status,
   features,
-  projectId,
   onFeatureUpdated,
+  onFeatureClick,
 }: StatusPanelProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -96,13 +96,12 @@ export function StatusPanel({
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-foreground/5">
+          <div>
             {features.map((feature) => (
-              <CompactFeatureRow
+              <FeatureCard
                 key={feature.id}
                 feature={feature}
-                projectId={projectId}
-                onUpdated={onFeatureUpdated}
+                onFeatureClick={onFeatureClick}
               />
             ))}
           </div>

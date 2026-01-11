@@ -7,14 +7,14 @@ import { TrashDropZone } from './trash-drop-zone';
 
 interface PanelBoardProps {
   features: FeaturesByStatus;
-  projectId: string;
   onFeatureUpdated: () => void;
+  onFeatureClick: (featureId: string) => void;
 }
 
 export function PanelBoard({
   features,
-  projectId,
   onFeatureUpdated,
+  onFeatureClick,
 }: PanelBoardProps) {
   const handleArchive = async (featureId: string) => {
     await fetch(`/api/features/${featureId}`, {
@@ -33,8 +33,8 @@ export function PanelBoard({
             <StatusPanel
               status={status}
               features={features[status]}
-              projectId={projectId}
               onFeatureUpdated={onFeatureUpdated}
+              onFeatureClick={onFeatureClick}
             />
           </div>
         ))}

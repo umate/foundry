@@ -626,23 +626,27 @@ export function FeatureChat({
 
                 {/* Right: Send or Stop */}
                 {isLoading ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="destructive"
+                    size="icon-sm"
                     onClick={handleStop}
-                    className="p-1.5 rounded-sm bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
                     title="Stop"
+                    className="size-7"
                   >
                     <StopIcon weight="bold" className="size-4" />
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="submit"
+                    variant="default"
+                    size="icon-sm"
                     disabled={!input.trim()}
-                    className="p-1.5 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     title="Send (Enter)"
+                    className="size-7"
                   >
                     <PaperPlaneRightIcon weight="bold" className="size-4" />
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
