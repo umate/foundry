@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { ListChecks, Trash, X } from "@phosphor-icons/react";
+import { ListChecks, Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
 import { useTrackOpenPanel } from "@/components/project/background-stream-context";
 import {
   AlertDialog,
@@ -178,6 +178,37 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     setOriginalMarkdown(null);
   }, []);
 
+  // Handle status transition
+  const handleStatusTransition = useCallback(
+    async (newStatus: "ready" | "done") => {
+      if (!featureId) return;
+
+      try {
+        const response = await fetch(`/api/features/${featureId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        if (response.ok) {
+          // Update local state with UI-friendly status
+          setFeature((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: newStatus === "ready" ? "current" : "done"
+                }
+              : null
+          );
+          onFeatureUpdated();
+        }
+      } catch (error) {
+        console.error("Failed to update status:", error);
+      }
+    },
+    [featureId, onFeatureUpdated]
+  );
+
   // Handle feature deletion (archive)
   const handleDeleteFeature = useCallback(async () => {
     if (!featureId) return;
@@ -212,6 +243,16 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
       });
 
       if (response.ok) {
+        const data = await response.json();
+        const updatedFeature = data.feature;
+
+        // Update local state if status changed (idea → scoped auto-transition)
+        if (updatedFeature.status && updatedFeature.status !== feature?.status) {
+          const uiStatus = updatedFeature.status === "ready" ? "current" : updatedFeature.status;
+          setFeature((prev) => (prev ? { ...prev, status: uiStatus } : null));
+          onFeatureUpdated();
+        }
+
         setHasUnsavedChanges(false);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
@@ -222,7 +263,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
       console.error("Failed to save spec:", error);
       setSaveStatus("idle");
     }
-  }, [featureId, specContent]);
+  }, [featureId, specContent, feature?.status, onFeatureUpdated]);
 
   // Auto-save spec
   useEffect(() => {
@@ -356,12 +397,35 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
               <div className="px-4 py-2 border-b border-border shrink-0">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <h2 className="text-base truncate">{feature.title}</h2>
+                    <h2 className="text-base font-semibold truncate">{feature.title}</h2>
                     <Badge variant="outline" className="text-[10px] shrink-0">
                       {STATUS_LABELS[feature.status]}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    {/* Status transition buttons */}
+                    {feature.status === "scoped" && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleStatusTransition("ready")}
+                        className="h-7 gap-1.5"
+                      >
+                        <Play weight="bold" className="size-3.5" />
+                        Start
+                      </Button>
+                    )}
+                    {feature.status === "current" && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleStatusTransition("done")}
+                        className="h-7 gap-1.5"
+                      >
+                        <CheckCircle weight="bold" className="size-3.5" />
+                        Complete
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"

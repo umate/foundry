@@ -221,6 +221,7 @@ function ProjectPageContent({
         onOpenChange={setAddIdeaOpen}
         projectId={project.id}
         onSuccess={handleIdeaAdded}
+        onFeatureCreated={setSelectedFeatureId}
       />
 
       <CreateProjectDialog

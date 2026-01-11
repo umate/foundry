@@ -74,10 +74,10 @@ export function FeatureCard({
         </span>
       </div>
 
-      {/* Summary */}
-      {feature.summary && (
+      {/* Summary or Description */}
+      {(feature.summary || feature.description) && (
         <p className="text-xs text-muted-foreground line-clamp-2 mb-2 pl-6">
-          {feature.summary}
+          {feature.summary || feature.description}
         </p>
       )}
 

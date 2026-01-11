@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -19,10 +18,10 @@ interface AddIdeaDialogProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   onSuccess?: () => void;
+  onFeatureCreated?: (featureId: string) => void;
 }
 
-export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess }: AddIdeaDialogProps) {
-  const router = useRouter();
+export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeatureCreated }: AddIdeaDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [ideaText, setIdeaText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,12 +40,13 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess }: AddI
     setLoading(true);
 
     try {
+      // Step 1: Create feature
       const response = await fetch(`/api/projects/${projectId}/ideas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ideaText: ideaText.trim(),
-          createOnly: true // Create feature without AI processing
+          createOnly: true
         })
       });
 
@@ -54,15 +54,20 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess }: AddI
         throw new Error("Failed to create feature");
       }
 
-      const data = await response.json();
+      const { featureId } = await response.json();
 
-      // Reset form and close dialog
+      // Step 2: Generate title/description
+      await fetch(`/api/features/${featureId}/generate-title`, {
+        method: "POST"
+      });
+
+      // Step 3: Reset form and close dialog
       setIdeaText("");
       onOpenChange(false);
-      onSuccess?.();
 
-      // Redirect to feature page
-      router.push(`/projects/${projectId}/features/${data.featureId}`);
+      // Step 4: Notify parent to reload and open sidebar
+      onSuccess?.();
+      onFeatureCreated?.(featureId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create feature");
       setLoading(false);
@@ -119,7 +124,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess }: AddI
               disabled={loading || !ideaText.trim()}
               shortcut={{ key: "enter", meta: true }}
             >
-              {loading ? "Creating..." : "Start Refining"}
+              {loading ? "Generating..." : "Start Refining"}
             </Button>
           </DialogFooter>
         </form>

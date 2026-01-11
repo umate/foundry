@@ -63,11 +63,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Generate summary from spec
     const summary = await generateSummary(specMarkdown);
 
-    // Update the feature's spec markdown and summary
-    const updatedFeature = await featureRepository.update(featureId, {
+    // Build update payload - auto-transition from 'idea' to 'scoped' when spec is saved
+    const updatePayload: { specMarkdown: string; summary?: string; status?: string } = {
       specMarkdown,
       ...(summary ? { summary } : {}),
-    });
+    };
+
+    // Auto-transition: idea → scoped when spec is generated
+    if (existingFeature.status === 'idea') {
+      updatePayload.status = 'scoped';
+    }
+
+    const updatedFeature = await featureRepository.update(featureId, updatePayload);
 
     return NextResponse.json({ feature: updatedFeature });
   } catch (error) {
