@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development guidelines
+
+- don't start `bun dev` server it's always running
+- run builds only when done with the feature, use `bun run lint` to check for errors once in a while
+- use phosphor icons for icons, not lucide
+
 ## Commands
 
 ```bash

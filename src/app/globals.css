@@ -235,7 +235,8 @@
   opacity: 0.7;
 }
 
-/* PRD Editor Markdown Styles */
+/* Markdown Content Styles (used in PRD editor and chat) */
+.markdown-content,
 .prd-editor-content {
   /* Headings */
   h1 {
@@ -265,7 +266,7 @@
     @apply leading-relaxed;
   }
   li > ul, li > ol {
-    @apply mt-1 mb-0;
+    @apply mt-0.5 mb-0;
   }
 
   /* Blockquotes */
@@ -280,7 +281,7 @@
 
   /* Paragraphs */
   p {
-    @apply my-2 leading-relaxed;
+    @apply my-0 leading-relaxed;
   }
 
   /* Links */

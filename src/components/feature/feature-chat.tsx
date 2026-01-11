@@ -307,18 +307,18 @@ export function FeatureChat({
 
   const handleClarificationSubmit = useCallback(
     (responses: Map<number, string | string[]>, questions: ClarificationQuestion[]) => {
-      // Format: "1. {Q}: {A}\n2. {Q}: {A}"
+      // Format: "Q: {question}\nA: {answer}"
       const lines: string[] = [];
 
       questions.forEach((q, index) => {
         const selection = responses.get(index);
         if (selection) {
           const answer = Array.isArray(selection) ? selection.join(", ") : selection;
-          lines.push(`${index + 1}. ${q.question}: ${answer}`);
+          lines.push(`Q: ${q.question}\nA: ${answer}`);
         }
       });
 
-      const responseText = lines.join("\n");
+      const responseText = lines.join("\n\n");
 
       if (responseText) {
         saveMessage("user", { text: responseText });
@@ -399,9 +399,9 @@ export function FeatureChat({
                     return (
                       <div
                         key={`${message.id}-${i}`}
-                        className={message.role === "user" ? "rounded-md py-2 px-3 bg-background" : ""}
+                        className={message.role === "user" ? "rounded-md py-0.5 px-2 bg-background" : ""}
                       >
-                        <div className="text-sm prose prose-sm max-w-none">
+                        <div className="text-sm markdown-content max-w-none">
                           <ReactMarkdown>{part.text}</ReactMarkdown>
                         </div>
                       </div>
@@ -422,7 +422,7 @@ export function FeatureChat({
 
                   if (part.type === "tool-generatePRD") {
                     return (
-                      <ToolResponse key={`${message.id}-${i}`} toolName="PRD Generated">
+                      <ToolResponse key={`${message.id}-${i}`} toolName="PRD Generated">  
                         <span className="text-sm">PRD generated — check the editor</span>
                       </ToolResponse>
                     );

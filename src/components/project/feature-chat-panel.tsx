@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { FileText, ListChecks, Trash, X } from '@phosphor-icons/react';
+import { useState, useCallback, useEffect, useRef } from "react";
+import { FileText, ListChecks, Trash, X } from "@phosphor-icons/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,17 +11,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { FeatureChat } from '@/components/feature/feature-chat';
-import { SubtaskList } from './subtask-list';
-import { PRDEditor } from '@/components/feature/prd-editor';
-import { FeatureStatus, STATUS_LABELS, SubTask } from '@/types/feature';
-import type { FeatureMessage } from '@/db/schema';
-import type { MDXEditorMethods } from '@mdxeditor/editor';
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { FeatureChat } from "@/components/feature/feature-chat";
+import { SubtaskList } from "./subtask-list";
+import { PRDEditor } from "@/components/feature/prd-editor";
+import { FeatureStatus, STATUS_LABELS, SubTask } from "@/types/feature";
+import type { FeatureMessage } from "@/db/schema";
+import type { MDXEditorMethods } from "@mdxeditor/editor";
 
 interface FeatureChatPanelProps {
   featureId: string | null;
@@ -45,13 +45,7 @@ interface FeatureData {
   subtasks: SubTask[];
 }
 
-export function FeatureChatPanel({
-  featureId,
-  projectId,
-  project,
-  onClose,
-  onFeatureUpdated,
-}: FeatureChatPanelProps) {
+export function FeatureChatPanel({ featureId, projectId, project, onClose, onFeatureUpdated }: FeatureChatPanelProps) {
   const editorRef = useRef<MDXEditorMethods>(null);
   const [feature, setFeature] = useState<FeatureData | null>(null);
   const [messages, setMessages] = useState<FeatureMessage[]>([]);
@@ -60,10 +54,10 @@ export function FeatureChatPanel({
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
 
   // PRD state
-  const [prdContent, setPrdContent] = useState('');
+  const [prdContent, setPrdContent] = useState("");
   const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
   const [originalMarkdown, setOriginalMarkdown] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Session reset key
@@ -79,7 +73,7 @@ export function FeatureChatPanel({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         if (specOpen) {
           setSpecOpen(false);
         } else {
@@ -88,8 +82,8 @@ export function FeatureChatPanel({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, specOpen, onClose]);
 
   // Load feature data when featureId changes
@@ -113,12 +107,12 @@ export function FeatureChatPanel({
             id: featureData.id,
             title: featureData.title,
             description: featureData.description,
-            status: featureData.status === 'ready' ? 'current' : featureData.status,
+            status: featureData.status === "ready" ? "current" : featureData.status,
             prdMarkdown: featureData.prdMarkdown,
             initialIdea: featureData.initialIdea,
-            subtasks: featureData.subtasks || [],
+            subtasks: featureData.subtasks || []
           });
-          setPrdContent(featureData.prdMarkdown || '');
+          setPrdContent(featureData.prdMarkdown || "");
         }
 
         // Load messages
@@ -128,7 +122,7 @@ export function FeatureChatPanel({
           setMessages(messagesData.messages || []);
         }
       } catch (error) {
-        console.error('Failed to load feature:', error);
+        console.error("Failed to load feature:", error);
       } finally {
         setLoading(false);
       }
@@ -147,10 +141,13 @@ export function FeatureChatPanel({
   }, []);
 
   // Handle pending change from updatePRD tool
-  const handlePendingChange = useCallback((proposed: string) => {
-    setOriginalMarkdown(prdContent);
-    setProposedMarkdown(proposed);
-  }, [prdContent]);
+  const handlePendingChange = useCallback(
+    (proposed: string) => {
+      setOriginalMarkdown(prdContent);
+      setProposedMarkdown(proposed);
+    },
+    [prdContent]
+  );
 
   // Handle accepting the proposed change
   const handleAcceptChange = useCallback(() => {
@@ -171,7 +168,7 @@ export function FeatureChatPanel({
   // Handle session reset
   const handleSessionReset = useCallback(() => {
     setMessages([]);
-    setMessagesKey(prev => prev + 1);
+    setMessagesKey((prev) => prev + 1);
     setProposedMarkdown(null);
     setOriginalMarkdown(null);
   }, []);
@@ -182,9 +179,9 @@ export function FeatureChatPanel({
 
     try {
       const response = await fetch(`/api/features/${featureId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'archived' }),
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "archived" })
       });
 
       if (response.ok) {
@@ -193,7 +190,7 @@ export function FeatureChatPanel({
         onFeatureUpdated();
       }
     } catch (error) {
-      console.error('Failed to archive feature:', error);
+      console.error("Failed to archive feature:", error);
     }
   }, [featureId, onClose, onFeatureUpdated]);
 
@@ -201,24 +198,24 @@ export function FeatureChatPanel({
   const savePrd = useCallback(async () => {
     if (!featureId || !prdContent.trim()) return;
 
-    setSaveStatus('saving');
+    setSaveStatus("saving");
     try {
       const response = await fetch(`/api/features/${featureId}/prd`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prdMarkdown: prdContent }),
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prdMarkdown: prdContent })
       });
 
       if (response.ok) {
         setHasUnsavedChanges(false);
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), 2000);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
       } else {
-        setSaveStatus('idle');
+        setSaveStatus("idle");
       }
     } catch (error) {
-      console.error('Failed to save PRD:', error);
-      setSaveStatus('idle');
+      console.error("Failed to save PRD:", error);
+      setSaveStatus("idle");
     }
   }, [featureId, prdContent]);
 
@@ -240,23 +237,26 @@ export function FeatureChatPanel({
   }, []);
 
   // Handle subtasks update
-  const handleSubtasksChange = useCallback(async (subtasks: SubTask[]) => {
-    if (!featureId) return;
+  const handleSubtasksChange = useCallback(
+    async (subtasks: SubTask[]) => {
+      if (!featureId) return;
 
-    // Optimistic update
-    setFeature(prev => prev ? { ...prev, subtasks } : null);
+      // Optimistic update
+      setFeature((prev) => (prev ? { ...prev, subtasks } : null));
 
-    try {
-      await fetch(`/api/features/${featureId}/subtasks`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subtasks }),
-      });
-      onFeatureUpdated();
-    } catch (error) {
-      console.error('Failed to update subtasks:', error);
-    }
-  }, [featureId, onFeatureUpdated]);
+      try {
+        await fetch(`/api/features/${featureId}/subtasks`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subtasks })
+        });
+        onFeatureUpdated();
+      } catch (error) {
+        console.error("Failed to update subtasks:", error);
+      }
+    },
+    [featureId, onFeatureUpdated]
+  );
 
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -277,10 +277,7 @@ export function FeatureChatPanel({
   return (
     <div className="fixed inset-0 z-50">
       {/* Single shared backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 animate-in fade-in duration-200"
-        onClick={handleBackdropClick}
-      />
+      <div className="absolute inset-0 bg-black/50 animate-in fade-in duration-200" onClick={handleBackdropClick} />
 
       {/* Panel container - positioned on right */}
       <div className="absolute inset-y-0 right-0 flex">
@@ -289,15 +286,8 @@ export function FeatureChatPanel({
           <div className="w-[calc(100vw-600px)] max-w-[50vw] bg-card border-r border-border flex flex-col animate-in slide-in-from-left duration-300">
             {/* Spec Header */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
-              <h2 className="font-mono text-sm font-bold uppercase tracking-wider">
-                Spec
-              </h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSpecOpen(false)}
-                className="size-8"
-              >
+              <h2 className="font-mono text-sm font-bold uppercase tracking-wider">Spec</h2>
+              <Button variant="ghost" size="icon" onClick={() => setSpecOpen(false)} className="size-8">
                 <X weight="bold" className="size-4" />
               </Button>
             </div>
@@ -310,7 +300,7 @@ export function FeatureChatPanel({
                 onChange={handleSpecChange}
                 saveStatus={saveStatus}
                 diffMarkdown={originalMarkdown ?? undefined}
-                viewMode={originalMarkdown ? 'diff' : 'rich-text'}
+                viewMode={originalMarkdown ? "diff" : "rich-text"}
                 projectContext={project}
                 featureTitle={feature?.title}
               />
@@ -321,7 +311,7 @@ export function FeatureChatPanel({
         {/* Chat Panel - Right side (always visible when panel is open) */}
         <div
           className={`bg-background border-l border-border flex flex-col animate-in slide-in-from-right duration-300 ${
-            specOpen ? 'w-[600px]' : 'w-full sm:w-[600px]'
+            specOpen ? "w-[600px]" : "w-full sm:w-[600px]"
           }`}
         >
           {loading ? (
@@ -369,9 +359,7 @@ export function FeatureChatPanel({
               <div className="px-4 py-2 border-b border-border shrink-0">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <h2 className="text-base font-sans truncate">
-                      {feature.title}
-                    </h2>
+                    <h2 className="text-base truncate">{feature.title}</h2>
                     <Badge variant="outline" className="text-[10px] shrink-0">
                       {STATUS_LABELS[feature.status]}
                     </Badge>
@@ -387,12 +375,12 @@ export function FeatureChatPanel({
                       <ListChecks weight="bold" className="size-4" />
                     </Button>
                     <Button
-                      variant={specOpen ? 'secondary' : 'ghost'}
+                      variant={specOpen ? "secondary" : "ghost"}
                       size="icon"
                       onClick={() => setSpecOpen(!specOpen)}
                       disabled={!hasPrd && !prdContent}
                       className="size-8"
-                      title={specOpen ? 'Hide Spec' : hasPrd ? 'View Spec' : 'No Spec Yet'}
+                      title={specOpen ? "Hide Spec" : hasPrd ? "View Spec" : "No Spec Yet"}
                     >
                       <FileText weight="bold" className="size-4" />
                     </Button>
@@ -411,7 +399,8 @@ export function FeatureChatPanel({
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Feature?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will archive &ldquo;{feature.title}&rdquo; and remove it from your project. You can restore it later from archived features.
+                            This will archive &ldquo;{feature.title}&rdquo; and remove it from your project. You can
+                            restore it later from archived features.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -426,12 +415,7 @@ export function FeatureChatPanel({
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onClose}
-                      className="size-8"
-                    >
+                    <Button variant="ghost" size="icon" onClick={onClose} className="size-8">
                       <X weight="bold" className="size-4" />
                     </Button>
                   </div>
@@ -461,22 +445,14 @@ export function FeatureChatPanel({
               {/* Subtasks Panel (expandable) */}
               {subtasksExpanded && (
                 <div className="border-t border-border p-3 shrink-0">
-                  <SubtaskList
-                    subtasks={feature.subtasks}
-                    onSubtasksChange={handleSubtasksChange}
-                  />
+                  <SubtaskList subtasks={feature.subtasks} onSubtasksChange={handleSubtasksChange} />
                 </div>
               )}
             </>
           ) : (
             <div className="flex-1 flex flex-col">
               <div className="flex items-center justify-end px-4 py-3 border-b border-border">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="size-8"
-                >
+                <Button variant="ghost" size="icon" onClick={onClose} className="size-8">
                   <X weight="bold" className="size-4" />
                 </Button>
               </div>
