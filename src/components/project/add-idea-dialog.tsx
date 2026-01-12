@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,15 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
   const [ideaText, setIdeaText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setIdeaText("");
+      setLoading(false);
+      setError("");
+    }
+  }, [open]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.metaKey && ideaText.trim() && !loading) {
@@ -63,6 +72,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
 
       // Step 3: Reset form and close dialog
       setIdeaText("");
+      setLoading(false);
       onOpenChange(false);
 
       // Step 4: Notify parent to reload and open sidebar

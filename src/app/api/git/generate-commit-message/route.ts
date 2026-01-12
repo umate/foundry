@@ -10,9 +10,11 @@ const SYSTEM_PROMPT = `You are a commit message generator. Based on the git diff
 
 Requirements:
 - First line: imperative mood summary (50 chars max), e.g., "Add user authentication" not "Added user authentication"
-- If needed, add 1-2 bullet points for significant changes
+- Match detail to scope:
+  - Small/focused changes: just the summary line, no bullets
+  - Medium changes: 1-2 bullet points for significant changes
+  - Large changes across multiple areas: up to 3-4 bullet points
 - Focus on WHAT changed and WHY, not HOW
-- Keep total message under 5 lines
 - Do NOT include file names unless critical context
 - Do NOT use generic phrases like "Update files" or "Make changes"
 

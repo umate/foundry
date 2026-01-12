@@ -93,7 +93,7 @@ function FileDiffItem({ file, isExpanded, onToggle }: { file: FileDiff; isExpand
     <div className="border-b border-border last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors cursor-pointer"
       >
         {isExpanded ? (
           <CaretDown weight="bold" className="size-3 shrink-0 text-muted-foreground" />
@@ -224,6 +224,21 @@ export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted }: C
           <span className="font-mono text-xs text-muted-foreground">
             {data.files.length} file{data.files.length !== 1 ? "s" : ""} changed
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const allExpanded = data.files.every(f => expandedFiles.has(f.filename));
+              if (allExpanded) {
+                setExpandedFiles(new Set());
+              } else {
+                setExpandedFiles(new Set(data.files.map(f => f.filename)));
+              }
+            }}
+            className="h-6 px-2 text-xs font-mono"
+          >
+            {data.files.every(f => expandedFiles.has(f.filename)) ? "Collapse All" : "Expand All"}
+          </Button>
           <DiffStats additions={data.totalAdditions} deletions={data.totalDeletions} />
         </div>
         <div className="flex items-center gap-1">

@@ -164,7 +164,7 @@ export function CommitDialog({
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             {generating ? (
-              <div className="flex items-center justify-center h-32 border rounded-md bg-muted/30">
+              <div className="flex items-center justify-center h-48 border rounded-md bg-muted/30">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <SpinnerGap weight="bold" className="size-4 animate-spin" />
                   <span className="font-mono text-sm">Generating message...</span>
@@ -176,10 +176,10 @@ export function CommitDialog({
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Commit message..."
-                rows={5}
+                rows={8}
                 required
                 disabled={isLoading}
-                className="resize-none min-h-[120px]"
+                className="resize-none min-h-[200px]"
               />
             )}
             <p className="text-xs text-muted-foreground">
