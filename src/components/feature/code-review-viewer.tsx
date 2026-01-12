@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ArrowsClockwise, WarningCircle, GitDiff, CaretRight, CaretDown, File } from "@phosphor-icons/react";
+import { ArrowsClockwise, WarningCircle, GitDiff, CaretRight, CaretDown, File, GitCommit } from "@phosphor-icons/react";
+import { CommitDialog } from "./commit-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -116,6 +117,7 @@ export function CodeReviewViewer({ projectId }: CodeReviewViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [commitDialogOpen, setCommitDialogOpen] = useState(false);
 
   const fetchDiff = useCallback(async () => {
     setLoading(true);
@@ -222,15 +224,27 @@ export function CodeReviewViewer({ projectId }: CodeReviewViewerProps) {
           </span>
           <DiffStats additions={data.totalAdditions} deletions={data.totalDeletions} />
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={fetchDiff}
-          className="size-7"
-          title="Refresh"
-        >
-          <ArrowsClockwise weight="bold" className="size-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setCommitDialogOpen(true)}
+            className="h-7 gap-1.5"
+            disabled={!data || data.files.length === 0}
+          >
+            <GitCommit weight="bold" className="size-4" />
+            <span className="font-mono uppercase tracking-wider text-xs">Commit</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={fetchDiff}
+            className="size-7"
+            title="Refresh"
+          >
+            <ArrowsClockwise weight="bold" className="size-4" />
+          </Button>
+        </div>
       </div>
 
       {/* File list */}
@@ -244,6 +258,18 @@ export function CodeReviewViewer({ projectId }: CodeReviewViewerProps) {
           />
         ))}
       </div>
+
+      <CommitDialog
+        open={commitDialogOpen}
+        onOpenChange={setCommitDialogOpen}
+        projectId={projectId}
+        diffSummary={{
+          files: data?.files.length ?? 0,
+          additions: data?.totalAdditions ?? 0,
+          deletions: data?.totalDeletions ?? 0
+        }}
+        onSuccess={fetchDiff}
+      />
     </div>
   );
 }
