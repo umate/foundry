@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { ListChecks, Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
+import { Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
 import { useTrackOpenPanel, useBackgroundStream } from "@/components/project/background-stream-context";
 import { toast } from "sonner";
 import {
@@ -19,11 +19,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FeatureChat } from "@/components/feature/feature-chat";
-import { SubtaskList } from "./subtask-list";
 import { SpecEditor } from "@/components/feature/spec-editor";
 import { CodeReviewViewer } from "@/components/feature/code-review-viewer";
 import { CollapsibleSideBar } from "@/components/ui/collapsible-side-bar";
-import { FeatureStatus, STATUS_LABELS, SubTask } from "@/types/feature";
+import { FeatureStatus, STATUS_LABELS } from "@/types/feature";
 import type { FeatureMessage } from "@/db/schema";
 import type { MDXEditorMethods } from "@mdxeditor/editor";
 
@@ -46,7 +45,6 @@ interface FeatureData {
   status: FeatureStatus;
   specMarkdown: string | null;
   initialIdea: string | null;
-  subtasks: SubTask[];
 }
 
 export function FeatureChatPanel({ featureId, projectId, project, onClose, onFeatureUpdated }: FeatureChatPanelProps) {
@@ -58,7 +56,6 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [messages, setMessages] = useState<FeatureMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [openPanel, setOpenPanel] = useState<'spec' | 'code-review' | null>(null);
-  const [subtasksExpanded, setSubtasksExpanded] = useState(false);
 
   // Get background stream for sending implementation messages
   const { sendMessage: bgSendMessage } = useBackgroundStream();
@@ -119,8 +116,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
             description: featureData.description,
             status: featureData.status === "ready" ? "current" : featureData.status,
             specMarkdown: featureData.specMarkdown,
-            initialIdea: featureData.initialIdea,
-            subtasks: featureData.subtasks || []
+            initialIdea: featureData.initialIdea
           });
           setSpecContent(featureData.specMarkdown || "");
         }
@@ -364,28 +360,6 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     setHasUnsavedChanges(true);
   }, []);
 
-  // Handle subtasks update
-  const handleSubtasksChange = useCallback(
-    async (subtasks: SubTask[]) => {
-      if (!featureId) return;
-
-      // Optimistic update
-      setFeature((prev) => (prev ? { ...prev, subtasks } : null));
-
-      try {
-        await fetch(`/api/features/${featureId}/subtasks`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subtasks })
-        });
-        onFeatureUpdated();
-      } catch (error) {
-        console.error("Failed to update subtasks:", error);
-      }
-    },
-    [featureId, onFeatureUpdated]
-  );
-
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
     // Only close if clicking the backdrop itself, not its children
@@ -527,15 +501,6 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                         Complete
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSubtasksExpanded(!subtasksExpanded)}
-                      className="size-8"
-                      title="Tasks"
-                    >
-                      <ListChecks weight="bold" className="size-4" />
-                    </Button>
                     <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -594,12 +559,6 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                 />
               </div>
 
-              {/* Subtasks Panel (expandable) */}
-              {subtasksExpanded && (
-                <div className="border-t border-border p-3 shrink-0">
-                  <SubtaskList subtasks={feature.subtasks} onSubtasksChange={handleSubtasksChange} />
-                </div>
-              )}
             </>
           ) : (
             <div className="flex-1 flex flex-col">

@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Feature, FeatureStatus } from '@/types/feature';
 import { useDrag } from './drag-context';
 import { useBackgroundStream } from './background-stream-context';
-import { SubtaskProgress } from './subtask-progress';
 import { StreamIndicator } from './stream-indicator';
 
 interface FeatureCardProps {
@@ -52,9 +51,6 @@ export function FeatureCard({
     setDraggedFeatureId(null);
   };
 
-  const completedTasks = feature.subtasks?.filter(t => t.completed).length ?? 0;
-  const totalTasks = feature.subtasks?.length ?? 0;
-
   return (
     <div
       draggable
@@ -86,20 +82,14 @@ export function FeatureCard({
         </p>
       )}
 
-      {/* Footer: Progress + Request Count */}
-      <div className="flex items-center justify-between pl-6">
-        <div className="flex items-center gap-2">
-          {totalTasks > 0 && (
-            <SubtaskProgress completed={completedTasks} total={totalTasks} />
-          )}
-        </div>
-
-        {feature.requestCount > 0 && (
+      {/* Footer: Request Count */}
+      {feature.requestCount > 0 && (
+        <div className="pl-6">
           <Badge variant="outline" className="h-5 text-[10px] shrink-0">
             {feature.requestCount} {feature.requestCount === 1 ? 'request' : 'requests'}
           </Badge>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
