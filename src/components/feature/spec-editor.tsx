@@ -18,6 +18,8 @@ import {
   linkPlugin,
   linkDialogPlugin,
   diffSourcePlugin,
+  codeBlockPlugin,
+  codeMirrorPlugin,
   type MDXEditorMethods,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
@@ -142,6 +144,22 @@ We are working on implementing this feature. Please:
             tablePlugin(),
             linkPlugin(),
             linkDialogPlugin(),
+            codeBlockPlugin(),
+            codeMirrorPlugin({
+              codeBlockLanguages: {
+                '': 'Plain Text',
+                text: 'Plain Text',
+                typescript: 'TypeScript',
+                javascript: 'JavaScript',
+                css: 'CSS',
+                html: 'HTML',
+                json: 'JSON',
+                markdown: 'Markdown',
+                bash: 'Bash',
+                shell: 'Shell',
+                sql: 'SQL',
+              },
+            }),
             toolbarPlugin({
               toolbarContents: () => (
                 <div className="flex items-center gap-3 flex-wrap w-full">

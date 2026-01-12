@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useFeatureStream } from "@/components/project/background-stream-context";
-import type { DisplayMessage, ClarificationQuestion } from "@/lib/hooks/use-claude-code-chat";
+import type { DisplayMessage, ClarificationQuestion, MessagePart } from "@/lib/hooks/use-claude-code-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon } from "@phosphor-icons/react";
@@ -25,11 +25,10 @@ import { PendingChangeCard } from "./pending-change-card";
 import { ClarificationCard } from "./clarification-card";
 import { BashResultCard } from "./bash-result-card";
 
-// DB message content types
-type MessageContent =
-  | { text: string }
-  | { toolName: "generateSpec"; markdown: string }
-  | { toolName: "updateSpec"; markdown: string; changeSummary: string };
+// DB message content - stores full parts array (mirrors DisplayMessage.parts)
+type MessageContent = {
+  parts: MessagePart[];
+};
 
 interface FeatureChatProps {
   projectId: string;
@@ -64,59 +63,46 @@ function ToolResponse({ toolName, children }: { toolName: string; children: Reac
   );
 }
 
-// Convert DB messages to display format
+// Convert DB messages to display format (handles both new and legacy formats)
 function dbToDisplayMessages(dbMessages: FeatureMessage[]): DisplayMessage[] {
-  return dbMessages.map((msg, index) => {
-    const content = msg.content as MessageContent;
-    const parts: DisplayMessage["parts"] = [];
+  return dbMessages.map((msg) => {
+    const content = msg.content as Record<string, unknown>;
 
-    if ("text" in content) {
+    // New format: { parts: [...] } - direct mapping
+    if (Array.isArray(content.parts)) {
+      return {
+        id: msg.id,
+        role: msg.role as "user" | "assistant",
+        parts: content.parts as MessagePart[]
+      };
+    }
+
+    // Legacy format fallback (for existing data)
+    const parts: MessagePart[] = [];
+    if ("text" in content && typeof content.text === "string") {
       parts.push({ type: "text", text: content.text });
-    } else if ("toolName" in content) {
-      if (content.toolName === "generateSpec") {
-        parts.push({
-          type: "tool-generateSpec",
-          markdown: content.markdown
-        });
-      } else if (content.toolName === "updateSpec") {
-        parts.push({
-          type: "tool-updateSpec",
-          markdown: content.markdown,
-          changeSummary: content.changeSummary
-        });
-      }
+    } else if (content.toolName === "generateSpec" && typeof content.markdown === "string") {
+      parts.push({ type: "tool-generateSpec", markdown: content.markdown });
+    } else if (content.toolName === "updateSpec" && typeof content.markdown === "string") {
+      parts.push({
+        type: "tool-updateSpec",
+        markdown: content.markdown,
+        changeSummary: (content.changeSummary as string) || ""
+      });
     }
 
     return {
-      id: msg.id || `db-${index}`,
+      id: msg.id,
       role: msg.role as "user" | "assistant",
       parts
     };
   });
 }
 
-// Extract saveable content from a display message
+// Extract saveable content from a display message - saves all parts
 function extractMessageContent(msg: DisplayMessage): MessageContent | null {
-  for (const part of msg.parts) {
-    if (part.type === "text" && part.text) {
-      return { text: part.text };
-    }
-    // Activity messages are ephemeral - skip them
-    if (part.type === "activity") {
-      continue;
-    }
-    if (part.type === "tool-generateSpec") {
-      if (part.markdown) {
-        return { toolName: "generateSpec" as const, markdown: part.markdown };
-      }
-    }
-    if (part.type === "tool-updateSpec") {
-      if (part.markdown && part.changeSummary) {
-        return { toolName: "updateSpec" as const, markdown: part.markdown, changeSummary: part.changeSummary };
-      }
-    }
-  }
-  return null;
+  if (msg.parts.length === 0) return null;
+  return { parts: msg.parts };
 }
 
 export function FeatureChat({
@@ -167,6 +153,13 @@ export function FeatureChat({
       setContextMessages(hydratedMessages);
     }
   }, [hydratedMessages, contextMessages.length, setContextMessages]);
+
+  // Mark hydrated messages as already saved to prevent re-saving on stream complete
+  useEffect(() => {
+    for (const msg of hydratedMessages) {
+      savedMessageIdsRef.current.add(msg.id);
+    }
+  }, [hydratedMessages]);
 
   // Wrapper to include spec callbacks when sending messages
   const sendMessage = useCallback(
@@ -259,7 +252,7 @@ export function FeatureChat({
       contextMessages.length === 0
     ) {
       hasSentInitialIdeaRef.current = true;
-      saveMessage("user", { text: initialIdea });
+      saveMessage("user", { parts: [{ type: "text", text: initialIdea }] });
       sendMessage({ text: initialIdea });
     }
   }, [initialIdea, hydratedMessages.length, contextMessages.length, sendMessage, saveMessage]);
@@ -301,7 +294,7 @@ export function FeatureChat({
     // Enter sends, Shift+Enter for newline
     if (e.key === "Enter" && !e.shiftKey && !isLoading && input.trim()) {
       e.preventDefault();
-      saveMessage("user", { text: input });
+      saveMessage("user", { parts: [{ type: "text", text: input }] });
       sendMessage({ text: input });
       setInput("");
     }
@@ -310,7 +303,7 @@ export function FeatureChat({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      saveMessage("user", { text: input });
+      saveMessage("user", { parts: [{ type: "text", text: input }] });
       sendMessage({ text: input });
       setInput("");
     }
@@ -332,7 +325,7 @@ export function FeatureChat({
       const responseText = lines.join("\n\n");
 
       if (responseText) {
-        saveMessage("user", { text: responseText });
+        saveMessage("user", { parts: [{ type: "text", text: responseText }] });
         sendMessage({ text: responseText });
       }
     },

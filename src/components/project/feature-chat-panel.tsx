@@ -136,14 +136,41 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     loadFeature();
   }, [featureId]);
 
-  // Handle spec generation from chat
-  const handleSpecGenerated = useCallback((markdown: string) => {
+  // Handle spec generation from chat - saves immediately
+  const handleSpecGenerated = useCallback(async (markdown: string) => {
     setSpecContent(markdown);
-    setHasUnsavedChanges(true);
     if (editorRef.current) {
       editorRef.current.setMarkdown(markdown);
     }
-  }, []);
+
+    // Save immediately instead of waiting for auto-save
+    if (!featureId || !markdown.trim()) return;
+
+    try {
+      const response = await fetch(`/api/features/${featureId}/spec`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ specMarkdown: markdown })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedFeature = data.feature;
+        const uiStatus = updatedFeature.status === "ready" ? "current" : updatedFeature.status;
+        setFeature((prev) => (prev ? { ...prev, status: uiStatus, specMarkdown: markdown } : null));
+        onFeatureUpdated();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Failed to save generated spec:", response.status, errorData);
+        // Set unsaved so auto-save can retry
+        setHasUnsavedChanges(true);
+      }
+    } catch (error) {
+      console.error("Failed to save generated spec:", error);
+      // Set unsaved so auto-save can retry
+      setHasUnsavedChanges(true);
+    }
+  }, [featureId, onFeatureUpdated]);
 
   // Handle pending change from updateSpec tool
   const handlePendingChange = useCallback(
@@ -176,6 +203,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     setMessagesKey((prev) => prev + 1);
     setProposedMarkdown(null);
     setOriginalMarkdown(null);
+    // Clear initialIdea to prevent auto-send on remount
+    setFeature((prev) => (prev ? { ...prev, initialIdea: null } : null));
   }, []);
 
   // Handle status transition
@@ -249,14 +278,19 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         // Update local state if status changed (idea → scoped auto-transition)
         if (updatedFeature.status && updatedFeature.status !== feature?.status) {
           const uiStatus = updatedFeature.status === "ready" ? "current" : updatedFeature.status;
-          setFeature((prev) => (prev ? { ...prev, status: uiStatus } : null));
+          setFeature((prev) => (prev ? { ...prev, status: uiStatus, specMarkdown: specContent } : null));
           onFeatureUpdated();
+        } else {
+          // Still update specMarkdown in local state
+          setFeature((prev) => (prev ? { ...prev, specMarkdown: specContent } : null));
         }
 
         setHasUnsavedChanges(false);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Failed to save spec:", response.status, errorData);
         setSaveStatus("idle");
       }
     } catch (error) {
