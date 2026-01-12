@@ -1,4 +1,4 @@
-import { eq, and, ne } from 'drizzle-orm';
+import { eq, and, ne, max } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { Feature, NewFeature } from '@/db/schema';
 import { featureMessageRepository } from './feature-message.repository';
@@ -18,7 +18,7 @@ export class FeatureRepository {
       ),
       orderBy: (features, { asc, desc }) => [
         asc(features.status),
-        desc(features.priority),
+        desc(features.sortOrder),
         desc(features.createdAt),
       ],
     });
@@ -109,6 +109,30 @@ export class FeatureRepository {
       .returning();
 
     return result.length > 0;
+  }
+
+  async getMaxSortOrderForStatus(projectId: string, status: string): Promise<number> {
+    const result = await db
+      .select({ maxOrder: max(schema.features.sortOrder) })
+      .from(schema.features)
+      .where(
+        and(
+          eq(schema.features.projectId, projectId),
+          eq(schema.features.status, status)
+        )
+      );
+
+    return result[0]?.maxOrder ?? 0;
+  }
+
+  async updateSortOrder(featureId: string, sortOrder: number): Promise<Feature | null> {
+    const result = await db
+      .update(schema.features)
+      .set({ sortOrder, updatedAt: new Date() })
+      .where(eq(schema.features.id, featureId))
+      .returning();
+
+    return result[0] ?? null;
   }
 }
 

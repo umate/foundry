@@ -109,12 +109,17 @@ export async function POST(
   const stream = new ReadableStream({
     async start(controller) {
       const sendEvent = (data: unknown) => {
+        const eventType = (data as { type?: string }).type || "unknown";
+        console.log(`[Agent] Sending SSE event: type=${eventType}`);
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
       try {
         // Track tool calls to map tool_use_id to tool name
         const toolCallMap = new Map<string, { name: string; input: unknown }>();
+        let messageCount = 0;
+
+        console.log("[Agent] Starting stream for feature:", featureId);
 
         for await (const message of createClaudeCodeStream(
           {
@@ -126,15 +131,25 @@ export async function POST(
           currentSpecMarkdown,
           messages
         )) {
+          messageCount++;
+          const msgType = (message as { type?: string }).type || "unknown";
+          const msgSubtype = (message as { subtype?: string }).subtype;
+          console.log(`[Agent] Message #${messageCount}: type=${msgType}${msgSubtype ? `, subtype=${msgSubtype}` : ""}`);
+
           // Skip system init messages entirely
           if (isSystemMessage(message)) {
+            console.log(`[Agent] Skipping system message`);
             continue;
           }
 
           // Handle user messages (tool results)
           if (isUserMessage(message)) {
+            console.log(`[Agent] Processing user message`);
             const toolResult = message.tool_use_result;
+            let handledToolResult = false;
+
             if (toolResult) {
+              console.log(`[Agent] User message has tool_use_result:`, Object.keys(toolResult));
               // Check if this is a file search result (Glob/Grep)
               if (toolResult.filenames && Array.isArray(toolResult.filenames)) {
                 const files = toolResult.filenames
@@ -145,6 +160,7 @@ export async function POST(
                   files: files.slice(0, 5), // Show max 5 files
                   count: toolResult.numFiles || files.length
                 });
+                handledToolResult = true;
               }
               // Check if this is a file read result
               else if (toolResult.file?.filePath) {
@@ -154,6 +170,7 @@ export async function POST(
                   path,
                   lineCount: toolResult.file.numLines
                 });
+                handledToolResult = true;
               }
               // Check if this is a bash result
               else if (toolResult.stdout !== undefined || toolResult.stderr !== undefined) {
@@ -162,6 +179,40 @@ export async function POST(
                   bashOutput: toolResult.stdout || toolResult.stderr || "",
                   exitCode: toolResult.exitCode
                 });
+                handledToolResult = true;
+              }
+              // TodoWrite results are handled silently - we already showed the list when the tool was called
+              else if (toolResult.oldTodos !== undefined || toolResult.newTodos !== undefined) {
+                handledToolResult = true;
+              }
+              // Check if this is an Edit tool result (file update)
+              else if (toolResult.type === "update" || toolResult.structuredPatch) {
+                const path = (toolResult.filePath as string)?.split("/").slice(-2).join("/") || "file";
+                sendEvent({
+                  type: "file_edit_result",
+                  path
+                });
+                handledToolResult = true;
+              }
+              // Check if this is an error result (string or has error property)
+              else if (typeof toolResult === "string" || toolResult.error) {
+                const errorMsg = typeof toolResult === "string"
+                  ? toolResult
+                  : toolResult.error;
+                sendEvent({
+                  type: "tool_error",
+                  error: typeof errorMsg === "string" ? errorMsg.slice(0, 100) : "Unknown error"
+                });
+                handledToolResult = true;
+              }
+
+              // Emit raw for any tool result that wasn't handled above
+              if (!handledToolResult) {
+                sendEvent({
+                  type: "raw",
+                  messageType: "unhandled_tool_result",
+                  data: toolResult
+                });
               }
             }
             continue;
@@ -169,14 +220,17 @@ export async function POST(
 
           // Handle different message types
           if (isAssistantMessage(message)) {
+            console.log(`[Agent] Processing assistant message`);
             // Extract and send text content
             const text = extractTextContent(message);
             if (text) {
+              console.log(`[Agent] Assistant has text content (${text.length} chars)`);
               sendEvent({ type: "text", content: text });
             }
 
             // Extract and send tool calls
             const toolCalls = extractToolCalls(message);
+            console.log(`[Agent] Assistant has ${toolCalls.length} tool calls`);
             for (const toolCall of toolCalls) {
               // Store tool call for matching with results
               toolCallMap.set(toolCall.id, { name: toolCall.name, input: toolCall.input });
@@ -203,6 +257,18 @@ export async function POST(
                 const cmd = input.command || "";
                 const cmdPreview = cmd.length > 50 ? cmd.slice(0, 47) + "..." : cmd;
                 sendEvent({ type: "activity", message: `Running: ${cmdPreview}` });
+              } else if (toolCall.name === "Write") {
+                // Write file - send activity and result
+                const input = toolCall.input as { file_path?: string };
+                const path = input.file_path?.split("/").slice(-2).join("/") || "file";
+                sendEvent({ type: "activity", message: `Writing ${path}` });
+                sendEvent({ type: "file_write_result", path });
+              } else if (toolCall.name === "Edit") {
+                // Edit file - send activity and result
+                const input = toolCall.input as { file_path?: string };
+                const path = input.file_path?.split("/").slice(-2).join("/") || "file";
+                sendEvent({ type: "activity", message: `Editing ${path}` });
+                sendEvent({ type: "file_edit_result", path });
               } else if (toolCall.name === "mcp__foundry__generateSpec") {
                 // Spec generation - extract the markdown from tool input
                 const input = toolCall.input as { markdown: string };
@@ -251,6 +317,15 @@ export async function POST(
                     }]
                   });
                 }
+              } else if (toolCall.name === "TodoWrite") {
+                // Task tracking - emit as todo_list event
+                const input = toolCall.input as {
+                  todos: Array<{ content: string; status: string; activeForm: string }>
+                };
+                sendEvent({
+                  type: "todo_list",
+                  todos: input.todos || []
+                });
               } else {
                 // Other tool calls
                 sendEvent({
@@ -262,21 +337,32 @@ export async function POST(
             }
           } else if (isResultMessage(message)) {
             // Stream complete
+            console.log(`[Agent] Result message received: subtype=${message.subtype}, cost=${message.total_cost_usd}, turns=${message.num_turns}`);
             sendEvent({
               type: "done",
               result: message.subtype,
               cost: message.total_cost_usd,
               turns: message.num_turns
             });
+          } else {
+            // Emit any other unhandled message types as raw for debugging
+            console.log(`[Agent] Unhandled message type, emitting as raw:`, message);
+            sendEvent({
+              type: "raw",
+              messageType: "unknown_sdk_message",
+              data: message
+            });
           }
-          // Skip any other unhandled message types (no more raw output)
         }
+        console.log(`[Agent] Stream loop ended. Total messages processed: ${messageCount}`);
       } catch (error) {
-        console.error("Claude Code agent error:", error);
+        console.error("[Agent] Claude Code agent error:", error);
         sendEvent({
           type: "error",
           message: error instanceof Error ? error.message : "Unknown error"
         });
+        // Always send done after error so client doesn't stay stuck in streaming state
+        sendEvent({ type: "done", result: "error" });
       } finally {
         controller.close();
       }

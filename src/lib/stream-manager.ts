@@ -2,12 +2,12 @@
  * Stream Manager - Extracted SSE streaming logic for background chat processing
  */
 
-import type { DisplayMessage, MessagePart, ClarificationQuestion } from "./hooks/use-claude-code-chat";
+import type { DisplayMessage, MessagePart, ClarificationQuestion, TodoItem } from "./hooks/use-claude-code-chat";
 
 export type ChatStatus = "idle" | "streaming" | "ready" | "error";
 
 interface SSEEvent {
-  type: "text" | "activity" | "tool_use" | "tool_result" | "done" | "error" | "raw" | "file_search_result" | "file_read_result" | "bash_result" | "clarification";
+  type: "text" | "activity" | "tool_use" | "tool_result" | "done" | "error" | "raw" | "file_search_result" | "file_read_result" | "file_write_result" | "file_edit_result" | "bash_result" | "tool_error" | "clarification" | "todo_list";
   content?: string;
   message?: string;
   name?: string;
@@ -30,6 +30,8 @@ interface SSEEvent {
   bashOutput?: string;
   exitCode?: number;
   questions?: ClarificationQuestion[];
+  todos?: TodoItem[];
+  error?: string;
 }
 
 export interface StreamCallbacks {
@@ -63,6 +65,9 @@ export async function startStream(
   // Track notification state per stream
   let specNotified = false;
   let updateNotified = false;
+  let eventCount = 0;
+
+  console.log(`[StreamManager] Starting stream for feature: ${featureId}`);
 
   // Add user message is already done by context, just start streaming
   callbacks.onStatusChange("streaming");
@@ -135,10 +140,15 @@ export async function startStream(
       for (const line of lines) {
         if (line.startsWith("data: ")) {
           const data = line.slice(6);
-          if (data === "[DONE]") continue;
+          if (data === "[DONE]") {
+            console.log(`[StreamManager] Received [DONE] marker`);
+            continue;
+          }
 
           try {
             const event: SSEEvent = JSON.parse(data);
+            eventCount++;
+            console.log(`[StreamManager] Event #${eventCount}: type=${event.type}`, event.name ? `name=${event.name}` : "");
 
             switch (event.type) {
               case "text":
@@ -150,12 +160,28 @@ export async function startStream(
                     assistantParts.push({ type: "text", text: event.content });
                   }
                   updateAssistantMessage();
+                } else {
+                  // Text event without content - emit raw for debugging
+                  assistantParts.push({
+                    type: "raw",
+                    messageType: "text_empty",
+                    data: event
+                  });
+                  updateAssistantMessage();
                 }
                 break;
 
               case "activity":
                 if (event.message) {
                   assistantParts.push({ type: "activity", message: event.message });
+                  updateAssistantMessage();
+                } else {
+                  // Activity event without message - emit raw for debugging
+                  assistantParts.push({
+                    type: "raw",
+                    messageType: "activity_empty",
+                    data: event
+                  });
                   updateAssistantMessage();
                 }
                 break;
@@ -182,6 +208,14 @@ export async function startStream(
                     updateNotified = true;
                     callbacks.onPendingChange(event.output.markdown, event.output.changeSummary);
                   }
+                } else {
+                  // Fallback for any other tool_result - emit raw for visibility
+                  assistantParts.push({
+                    type: "raw",
+                    messageType: `tool_result:${event.name || "unknown"}`,
+                    data: event.output || event
+                  });
+                  updateAssistantMessage();
                 }
                 break;
 
@@ -191,6 +225,14 @@ export async function startStream(
                     type: "tool-use",
                     name: event.name,
                     input: event.input
+                  });
+                  updateAssistantMessage();
+                } else {
+                  // Tool use without name - emit raw for debugging
+                  assistantParts.push({
+                    type: "raw",
+                    messageType: "tool_use_unnamed",
+                    data: event
                   });
                   updateAssistantMessage();
                 }
@@ -204,6 +246,14 @@ export async function startStream(
                     count: event.count || event.files.length
                   });
                   updateAssistantMessage();
+                } else {
+                  // File search result without files - emit raw for debugging
+                  assistantParts.push({
+                    type: "raw",
+                    messageType: "file_search_empty",
+                    data: event
+                  });
+                  updateAssistantMessage();
                 }
                 break;
 
@@ -215,6 +265,34 @@ export async function startStream(
                     lineCount: event.lineCount
                   });
                   updateAssistantMessage();
+                } else {
+                  // File read result without path - emit raw for debugging
+                  assistantParts.push({
+                    type: "raw",
+                    messageType: "file_read_empty",
+                    data: event
+                  });
+                  updateAssistantMessage();
+                }
+                break;
+
+              case "file_write_result":
+                if (event.path) {
+                  assistantParts.push({
+                    type: "file-write-result",
+                    path: event.path
+                  });
+                  updateAssistantMessage();
+                }
+                break;
+
+              case "file_edit_result":
+                if (event.path) {
+                  assistantParts.push({
+                    type: "file-edit-result",
+                    path: event.path
+                  });
+                  updateAssistantMessage();
                 }
                 break;
 
@@ -224,6 +302,14 @@ export async function startStream(
                   command: event.command,
                   output: event.bashOutput || "",
                   exitCode: event.exitCode
+                });
+                updateAssistantMessage();
+                break;
+
+              case "tool_error":
+                assistantParts.push({
+                  type: "tool-error",
+                  error: event.error || "Unknown error"
                 });
                 updateAssistantMessage();
                 break;
@@ -244,18 +330,39 @@ export async function startStream(
                     questions: event.questions
                   });
                   updateAssistantMessage();
+                } else {
+                  // Clarification event without valid questions - emit raw for debugging
+                  assistantParts.push({
+                    type: "raw",
+                    messageType: "clarification_invalid",
+                    data: event
+                  });
+                  updateAssistantMessage();
+                }
+                break;
+
+              case "todo_list":
+                if (event.todos && Array.isArray(event.todos)) {
+                  assistantParts.push({
+                    type: "todo-list",
+                    todos: event.todos
+                  });
+                  updateAssistantMessage();
                 }
                 break;
 
               case "done":
+                console.log(`[StreamManager] Received done event, total events: ${eventCount}`);
                 callbacks.onStatusChange("ready");
                 callbacks.onComplete();
                 break;
 
               case "error":
+                console.error(`[StreamManager] Received error event:`, event.message);
                 throw new Error(event.message || "Unknown error");
 
               default:
+                console.log(`[StreamManager] Unhandled event type: ${event.type}, adding as raw`);
                 assistantParts.push({
                   type: "raw",
                   messageType: event.type,
@@ -264,19 +371,22 @@ export async function startStream(
                 updateAssistantMessage();
             }
           } catch (e) {
-            console.error("Failed to parse SSE event:", e, data);
+            console.error("[StreamManager] Failed to parse SSE event:", e, data);
           }
         }
       }
     }
 
+    console.log(`[StreamManager] Stream reader loop ended. Total events processed: ${eventCount}, assistant parts: ${assistantParts.length}`);
     callbacks.onStatusChange("ready");
     callbacks.onComplete();
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
+      console.log(`[StreamManager] Stream aborted by user`);
       callbacks.onStatusChange("ready");
       return;
     }
+    console.error(`[StreamManager] Stream error:`, err);
     const error = err instanceof Error ? err : new Error("Unknown error");
     callbacks.onError(error);
     callbacks.onStatusChange("error");

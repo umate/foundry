@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ListChecks, Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
-import { useTrackOpenPanel } from "@/components/project/background-stream-context";
+import { useTrackOpenPanel, useBackgroundStream } from "@/components/project/background-stream-context";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { FeatureChat } from "@/components/feature/feature-chat";
 import { SubtaskList } from "./subtask-list";
 import { SpecEditor } from "@/components/feature/spec-editor";
+import { CodeReviewViewer } from "@/components/feature/code-review-viewer";
 import { CollapsibleSideBar } from "@/components/ui/collapsible-side-bar";
 import { FeatureStatus, STATUS_LABELS, SubTask } from "@/types/feature";
 import type { FeatureMessage } from "@/db/schema";
@@ -55,8 +57,11 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [feature, setFeature] = useState<FeatureData | null>(null);
   const [messages, setMessages] = useState<FeatureMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [specOpen, setSpecOpen] = useState(false);
+  const [openPanel, setOpenPanel] = useState<'spec' | 'code-review' | null>(null);
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
+
+  // Get background stream for sending implementation messages
+  const { sendMessage: bgSendMessage } = useBackgroundStream();
 
   // Spec state
   const [specContent, setSpecContent] = useState("");
@@ -73,14 +78,14 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
 
   const isOpen = featureId !== null;
 
-  // Handle escape key - close spec first, then panel
+  // Handle escape key - close sidebar first, then panel
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (specOpen) {
-          setSpecOpen(false);
+        if (openPanel !== null) {
+          setOpenPanel(null);
         } else {
           onClose();
         }
@@ -89,7 +94,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, specOpen, onClose]);
+  }, [isOpen, openPanel, onClose]);
 
   // Load feature data when featureId changes
   useEffect(() => {
@@ -97,7 +102,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
       setFeature(null);
       setMessages([]);
       setLoading(false);
-      setSpecOpen(false);
+      setOpenPanel(null);
       return;
     }
 
@@ -238,6 +243,49 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     [featureId, onFeatureUpdated]
   );
 
+  // Handle Start button - validates spec, updates status, sends implementation message
+  const handleStart = useCallback(async () => {
+    // Check if spec is empty
+    if (!specContent.trim()) {
+      toast.warning("No spec to implement", {
+        description: "Please generate a spec before starting implementation."
+      });
+      return;
+    }
+
+    if (!featureId || !feature) return;
+
+    // Update status to ready
+    await handleStatusTransition("ready");
+
+    // Create implementation prompt
+    const implementationPrompt = `The spec is ready. Let's implement this feature:\n\n${specContent}`;
+
+    // Save user message to DB
+    try {
+      await fetch(`/api/features/${featureId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: {
+            role: "user",
+            content: { parts: [{ type: "text", text: implementationPrompt }] }
+          }
+        })
+      });
+    } catch (error) {
+      console.error("Failed to save implementation message:", error);
+    }
+
+    // Send message via background stream
+    bgSendMessage(featureId, { text: implementationPrompt }, {
+      currentSpecMarkdown: specContent,
+      featureTitle: feature.title,
+      onSpecGenerated: undefined,
+      onPendingChange: undefined,
+    });
+  }, [specContent, featureId, feature, handleStatusTransition, bgSendMessage]);
+
   // Handle feature deletion (archive)
   const handleDeleteFeature = useCallback(async () => {
     if (!featureId) return;
@@ -342,8 +390,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const handleBackdropClick = (e: React.MouseEvent) => {
     // Only close if clicking the backdrop itself, not its children
     if (e.target === e.currentTarget) {
-      if (specOpen) {
-        setSpecOpen(false);
+      if (openPanel !== null) {
+        setOpenPanel(null);
       } else {
         onClose();
       }
@@ -364,8 +412,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         {/* Spec Panel - Collapsible side bar */}
         <CollapsibleSideBar
           label="SPEC"
-          isExpanded={specOpen}
-          onToggle={() => setSpecOpen(!specOpen)}
+          isExpanded={openPanel === 'spec'}
+          onToggle={() => setOpenPanel(openPanel === 'spec' ? null : 'spec')}
           hasContent={hasSpec}
         >
           <SpecEditor
@@ -380,10 +428,22 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           />
         </CollapsibleSideBar>
 
+        {/* Code Review Panel - Collapsible side bar (only when current or done) */}
+        {(feature?.status === "current" || feature?.status === "done") && (
+          <CollapsibleSideBar
+            label="CODE REVIEW"
+            isExpanded={openPanel === 'code-review'}
+            onToggle={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
+            hasContent={true}
+          >
+            <CodeReviewViewer projectId={projectId} />
+          </CollapsibleSideBar>
+        )}
+
         {/* Chat Panel - Right side (always visible when panel is open) */}
         <div
           className={`bg-background border-l border-border flex flex-col animate-in fade-in duration-200 ${
-            specOpen ? "w-[600px]" : "w-full sm:w-[600px]"
+            openPanel !== null ? "w-[600px]" : "w-full sm:w-[600px]"
           }`}
         >
           {loading ? (
@@ -442,7 +502,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => handleStatusTransition("ready")}
+                        onClick={handleStart}
                         className="h-7 gap-1.5"
                       >
                         <Play weight="bold" className="size-3.5" />

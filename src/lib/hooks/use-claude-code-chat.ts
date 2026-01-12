@@ -16,6 +16,12 @@ export interface ClarificationQuestion {
   multiSelect: boolean;
 }
 
+export interface TodoItem {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+  activeForm: string;
+}
+
 export type MessagePart =
   | { type: "text"; text: string }
   | { type: "activity"; message: string }
@@ -24,9 +30,13 @@ export type MessagePart =
   | { type: "tool-use"; name: string; input: unknown }
   | { type: "file-search-result"; files: string[]; count: number }
   | { type: "file-read-result"; path: string; lineCount?: number }
+  | { type: "file-write-result"; path: string }
+  | { type: "file-edit-result"; path: string }
   | { type: "bash-result"; command?: string; output: string; exitCode?: number }
+  | { type: "tool-error"; error: string }
   | { type: "raw"; messageType: string; data: unknown }
-  | { type: "clarification"; questions: ClarificationQuestion[] };
+  | { type: "clarification"; questions: ClarificationQuestion[] }
+  | { type: "todo-list"; todos: TodoItem[] };
 
 export interface DisplayMessage {
   id: string;
@@ -44,7 +54,7 @@ interface UseClaudeCodeChatOptions {
 type ChatStatus = "idle" | "streaming" | "ready" | "error";
 
 interface SSEEvent {
-  type: "text" | "activity" | "tool_use" | "tool_result" | "done" | "error" | "raw" | "file_search_result" | "file_read_result" | "bash_result" | "clarification";
+  type: "text" | "activity" | "tool_use" | "tool_result" | "done" | "error" | "raw" | "file_search_result" | "file_read_result" | "file_write_result" | "file_edit_result" | "bash_result" | "tool_error" | "clarification" | "todo_list";
   content?: string;
   message?: string;
   name?: string;
@@ -71,6 +81,10 @@ interface SSEEvent {
   exitCode?: number;
   // Clarification fields
   questions?: ClarificationQuestion[];
+  // Todo list fields
+  todos?: TodoItem[];
+  // Tool error fields
+  error?: string;
 }
 
 export function useClaudeCodeChat({
@@ -197,12 +211,28 @@ export function useClaudeCodeChat({
                         assistantParts.push({ type: "text", text: event.content });
                       }
                       updateAssistantMessage();
+                    } else {
+                      // Text event without content - emit raw for debugging
+                      assistantParts.push({
+                        type: "raw",
+                        messageType: "text_empty",
+                        data: event
+                      });
+                      updateAssistantMessage();
                     }
                     break;
 
                   case "activity":
                     if (event.message) {
                       assistantParts.push({ type: "activity", message: event.message });
+                      updateAssistantMessage();
+                    } else {
+                      // Activity event without message - emit raw for debugging
+                      assistantParts.push({
+                        type: "raw",
+                        messageType: "activity_empty",
+                        data: event
+                      });
                       updateAssistantMessage();
                     }
                     break;
@@ -231,6 +261,14 @@ export function useClaudeCodeChat({
                         updateNotifiedRef.current = true;
                         onPendingChange(event.output.markdown, event.output.changeSummary);
                       }
+                    } else {
+                      // Fallback for any other tool_result - emit raw for visibility
+                      assistantParts.push({
+                        type: "raw",
+                        messageType: `tool_result:${event.name || "unknown"}`,
+                        data: event.output || event
+                      });
+                      updateAssistantMessage();
                     }
                     break;
 
@@ -240,6 +278,14 @@ export function useClaudeCodeChat({
                         type: "tool-use",
                         name: event.name,
                         input: event.input
+                      });
+                      updateAssistantMessage();
+                    } else {
+                      // Tool use without name - emit raw for debugging
+                      assistantParts.push({
+                        type: "raw",
+                        messageType: "tool_use_unnamed",
+                        data: event
                       });
                       updateAssistantMessage();
                     }
@@ -253,6 +299,14 @@ export function useClaudeCodeChat({
                         count: event.count || event.files.length
                       });
                       updateAssistantMessage();
+                    } else {
+                      // File search result without files - emit raw for debugging
+                      assistantParts.push({
+                        type: "raw",
+                        messageType: "file_search_empty",
+                        data: event
+                      });
+                      updateAssistantMessage();
                     }
                     break;
 
@@ -264,6 +318,34 @@ export function useClaudeCodeChat({
                         lineCount: event.lineCount
                       });
                       updateAssistantMessage();
+                    } else {
+                      // File read result without path - emit raw for debugging
+                      assistantParts.push({
+                        type: "raw",
+                        messageType: "file_read_empty",
+                        data: event
+                      });
+                      updateAssistantMessage();
+                    }
+                    break;
+
+                  case "file_write_result":
+                    if (event.path) {
+                      assistantParts.push({
+                        type: "file-write-result",
+                        path: event.path
+                      });
+                      updateAssistantMessage();
+                    }
+                    break;
+
+                  case "file_edit_result":
+                    if (event.path) {
+                      assistantParts.push({
+                        type: "file-edit-result",
+                        path: event.path
+                      });
+                      updateAssistantMessage();
                     }
                     break;
 
@@ -273,6 +355,14 @@ export function useClaudeCodeChat({
                       command: event.command,
                       output: event.bashOutput || "",
                       exitCode: event.exitCode
+                    });
+                    updateAssistantMessage();
+                    break;
+
+                  case "tool_error":
+                    assistantParts.push({
+                      type: "tool-error",
+                      error: event.error || "Unknown error"
                     });
                     updateAssistantMessage();
                     break;
@@ -291,6 +381,24 @@ export function useClaudeCodeChat({
                       assistantParts.push({
                         type: "clarification",
                         questions: event.questions
+                      });
+                      updateAssistantMessage();
+                    } else {
+                      // Clarification event without valid questions - emit raw for debugging
+                      assistantParts.push({
+                        type: "raw",
+                        messageType: "clarification_invalid",
+                        data: event
+                      });
+                      updateAssistantMessage();
+                    }
+                    break;
+
+                  case "todo_list":
+                    if (event.todos && Array.isArray(event.todos)) {
+                      assistantParts.push({
+                        type: "todo-list",
+                        todos: event.todos
                       });
                       updateAssistantMessage();
                     }

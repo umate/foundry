@@ -26,7 +26,11 @@ function createFoundryTools() {
         "generateSpec",
         "Generate the spec based on the feature idea and codebase analysis. Only call this AFTER asking clarifying questions and when scope is crystal clear.",
         {
-          markdown: z.string().describe("The full spec in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria")
+          markdown: z
+            .string()
+            .describe(
+              "The full spec in markdown format with sections: Problem, Solution, User Stories, Acceptance Criteria"
+            )
         },
         async ({ markdown }) => ({
           content: [{ type: "text" as const, text: JSON.stringify({ type: "spec", markdown }) }]
@@ -136,7 +140,14 @@ Based on codebase analysis:
 - Questions first, exploration second, spec last
 - Be opinionated - suggest what you think makes sense
 - Reference the project context in your questions
-- If updating existing spec, use \`mcp__foundry__updateSpec\` instead`;
+- If updating existing spec, use \`mcp__foundry__updateSpec\` instead
+
+## IMPORTANT: AskUserQuestion Behavior
+After calling \`AskUserQuestion\`, you MUST stop immediately and wait for the user's response.
+- Do NOT continue with codebase exploration or spec generation in the same turn
+- Do NOT make assumptions about what the user will answer
+- The user will see your questions, answer them, and you'll receive their answers in the next message
+- Only then should you continue with the next steps`;
 }
 
 // --- Message Formatting ---
@@ -155,9 +166,10 @@ function formatMessagesAsPrompt(messages: ChatMessage[]): string {
   }
 
   // Include conversation history as context
-  const history = messages.slice(0, -1).map(m =>
-    `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`
-  ).join("\n\n");
+  const history = messages
+    .slice(0, -1)
+    .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+    .join("\n\n");
 
   return `Previous conversation:
 ${history}
@@ -197,8 +209,11 @@ export async function* createClaudeCodeStream(
 
   // Configure allowed tools
   const allowedTools = [
-    "Read", "Glob", "Grep", // Codebase understanding
-    "AskUserQuestion", // Native multi-question tool (supports 1-4 questions as tabs)
+    "Read",
+    "Glob",
+    "Grep", // Codebase understanding
+    "AskUserQuestion", // Clarifying questions - agent MUST stop after calling
+    "TodoWrite", // Task tracking
     "mcp__foundry__generateSpec",
     "mcp__foundry__updateSpec"
   ];
@@ -208,7 +223,7 @@ export async function* createClaudeCodeStream(
     mcpServers: { foundry: foundryTools },
     allowedTools,
     permissionMode: "acceptEdits" as const,
-    maxTurns: 12
+    maxTurns: 50 // Increased from 12 to allow complex tasks to complete
   };
 
   // Only set cwd if repoPath is provided

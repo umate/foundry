@@ -34,6 +34,7 @@ const updateFeatureSchema = z.object({
   // 'archived' is used for soft-deleting features via trash drop zone
   status: z.enum(['idea', 'scoped', 'current', 'ready', 'done', 'archived']).optional(),
   priority: z.number().int().optional(),
+  sortOrder: z.number().int().optional(),
   requestCount: z.number().int().min(0).optional(),
 });
 
@@ -52,10 +53,30 @@ export async function PATCH(
     const body = await request.json();
     const data = updateFeatureSchema.parse(body);
 
-    const feature = await featureRepository.update(id, {
+    // Prepare update data
+    const updateData: Record<string, unknown> = {
       ...data,
       status: mapStatusToDb(data.status),
-    });
+    };
+
+    // If status is changing and sortOrder is not explicitly provided,
+    // auto-set sortOrder to place the feature at the top of the new column
+    if (data.status && data.sortOrder === undefined) {
+      const existingFeature = await featureRepository.findById(id);
+      if (existingFeature) {
+        const dbStatus = mapStatusToDb(data.status)!;
+        // Only update sortOrder if the status is actually changing
+        if (existingFeature.status !== dbStatus) {
+          const maxSortOrder = await featureRepository.getMaxSortOrderForStatus(
+            existingFeature.projectId,
+            dbStatus
+          );
+          updateData.sortOrder = maxSortOrder + 1000;
+        }
+      }
+    }
+
+    const feature = await featureRepository.update(id, updateData);
 
     if (!feature) {
       return NextResponse.json(

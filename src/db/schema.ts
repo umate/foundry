@@ -34,6 +34,7 @@ export const features = pgTable('features', {
   description: text('description'),
   status: text('status').notNull().default('idea'), // 'idea' | 'scoped' | 'ready' | 'done' | 'archived'
   priority: integer('priority').notNull().default(0),
+  sortOrder: integer('sort_order').notNull().default(0), // For manual ordering within status columns
   requestCount: integer('request_count').notNull().default(0),
   parentId: uuid('parent_id'),
   specMarkdown: text('spec_markdown'), // Feature spec as markdown

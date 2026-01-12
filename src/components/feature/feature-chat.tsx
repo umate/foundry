@@ -5,7 +5,7 @@ import { useFeatureStream } from "@/components/project/background-stream-context
 import type { DisplayMessage, ClarificationQuestion, MessagePart } from "@/lib/hooks/use-claude-code-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon } from "@phosphor-icons/react";
+import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon, FloppyDiskIcon, PencilIcon, WarningIcon } from "@phosphor-icons/react";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import {
@@ -24,6 +24,7 @@ import type { FeatureMessage } from "@/db/schema";
 import { PendingChangeCard } from "./pending-change-card";
 import { ClarificationCard } from "./clarification-card";
 import { BashResultCard } from "./bash-result-card";
+import { TodoListCard } from "./todo-list-card";
 
 // DB message content - stores full parts array (mirrors DisplayMessage.parts)
 type MessageContent = {
@@ -537,6 +538,32 @@ export function FeatureChat({
                     );
                   }
 
+                  // Render file write results
+                  if (part.type === "file-write-result") {
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="flex items-center gap-2 text-xs text-muted-foreground font-mono"
+                      >
+                        <FloppyDiskIcon weight="bold" className="size-3 shrink-0" />
+                        <span>Wrote: {part.path}</span>
+                      </div>
+                    );
+                  }
+
+                  // Render file edit results
+                  if (part.type === "file-edit-result") {
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="flex items-center gap-2 text-xs text-muted-foreground font-mono"
+                      >
+                        <PencilIcon weight="bold" className="size-3 shrink-0" />
+                        <span>Edited: {part.path}</span>
+                      </div>
+                    );
+                  }
+
                   // Render bash command results
                   if (part.type === "bash-result") {
                     return (
@@ -549,14 +576,41 @@ export function FeatureChat({
                     );
                   }
 
-                  // Render raw/debug messages as JSON
-                  if (part.type === "raw") {
+                  // Render tool errors
+                  if (part.type === "tool-error") {
                     return (
-                      <div key={`${message.id}-${i}`} className="rounded-md bg-muted p-2 overflow-x-auto">
-                        <div className="text-xs font-mono text-muted-foreground mb-1">[{part.messageType}]</div>
-                        <pre className="text-xs font-mono whitespace-pre-wrap break-all">
-                          {JSON.stringify(part.data, null, 2)}
-                        </pre>
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="flex items-center gap-2 text-xs text-destructive/80 font-mono"
+                      >
+                        <WarningIcon weight="bold" className="size-3 shrink-0" />
+                        <span className="truncate">{part.error}</span>
+                      </div>
+                    );
+                  }
+
+                  // Render raw/debug messages compactly
+                  if (part.type === "raw") {
+                    // Try to extract a compact summary
+                    const data = part.data;
+                    let summary = "Result";
+                    if (typeof data === "string") {
+                      summary = data.slice(0, 80) + (data.length > 80 ? "..." : "");
+                    } else if (data && typeof data === "object") {
+                      if ("filePath" in data) {
+                        const filePath = (data as { filePath: string }).filePath;
+                        summary = `File: ${filePath.split("/").pop()}`;
+                      } else if ("error" in data) {
+                        summary = String((data as { error: unknown }).error).slice(0, 80);
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="text-xs text-muted-foreground/60 font-mono truncate"
+                      >
+                        [{part.messageType}] {summary}
                       </div>
                     );
                   }
@@ -573,7 +627,27 @@ export function FeatureChat({
                     );
                   }
 
-                  return null;
+                  // Render todo list from TodoWrite tool
+                  if (part.type === "todo-list") {
+                    return (
+                      <TodoListCard
+                        key={`${message.id}-${i}`}
+                        todos={part.todos}
+                      />
+                    );
+                  }
+
+                  // Fallback: render any unknown part types as JSON for debugging
+                  return (
+                    <div key={`${message.id}-${i}`} className="rounded-md bg-amber-500/10 border border-amber-500/30 p-2 overflow-x-auto">
+                      <div className="text-xs font-mono text-amber-600 dark:text-amber-400 mb-1">
+                        [Unsupported: {part.type || "unknown"}]
+                      </div>
+                      <pre className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">
+                        {JSON.stringify(part, null, 2)}
+                      </pre>
+                    </div>
+                  );
                 })}
               </div>
             </div>

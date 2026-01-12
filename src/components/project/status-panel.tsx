@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { GearSix, Lightbulb, Target, Play, CheckCircle } from '@phosphor-icons/react';
 import { Feature, FeatureStatus, STATUS_LABELS } from '@/types/feature';
 import { FeatureCard } from './feature-card';
@@ -10,6 +10,11 @@ interface StatusPanelProps {
   features: Feature[];
   onFeatureUpdated: () => void;
   onFeatureClick: (featureId: string) => void;
+}
+
+interface DropIndicator {
+  index: number;
+  position: 'before' | 'after';
 }
 
 const getStatusIcon = (status: FeatureStatus) => {
@@ -25,6 +30,43 @@ const getStatusIcon = (status: FeatureStatus) => {
   }
 };
 
+// Calculate new sortOrder based on position between features
+// Uses midpoint strategy with large gaps (1000) for insertions
+function calculateNewSortOrder(
+  features: Feature[],
+  targetIndex: number,
+  position: 'before' | 'after',
+  draggedFeatureId: string
+): number {
+  // Filter out the dragged feature from calculations
+  const otherFeatures = features.filter(f => f.id !== draggedFeatureId);
+
+  // Adjust target index since we removed the dragged feature
+  const adjustedIndex = position === 'before' ? targetIndex : targetIndex + 1;
+  const insertIndex = Math.min(adjustedIndex, otherFeatures.length);
+
+  const prevFeature = otherFeatures[insertIndex - 1];
+  const nextFeature = otherFeatures[insertIndex];
+
+  const prevOrder = prevFeature?.sortOrder ?? 0;
+  const nextOrder = nextFeature?.sortOrder ?? (prevOrder + 2000);
+
+  // If inserting at top, go higher than current max
+  if (insertIndex === 0) {
+    const maxOrder = otherFeatures[0]?.sortOrder ?? 0;
+    return maxOrder + 1000;
+  }
+
+  // If inserting at bottom
+  if (insertIndex >= otherFeatures.length) {
+    const minOrder = otherFeatures[otherFeatures.length - 1]?.sortOrder ?? 1000;
+    return Math.max(0, minOrder - 1000);
+  }
+
+  // Insert between two features - use midpoint
+  return Math.floor((prevOrder + nextOrder) / 2);
+}
+
 export function StatusPanel({
   status,
   features,
@@ -32,6 +74,8 @@ export function StatusPanel({
   onFeatureClick,
 }: StatusPanelProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
+  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -43,25 +87,67 @@ export function StatusPanel({
     // Only set to false if we're leaving the drop zone entirely
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setIsDragOver(false);
+      setDropIndicator(null);
     }
+  };
+
+  const handleCardDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const cardElement = cardRefs.current.get(index);
+    if (!cardElement) return;
+
+    const rect = cardElement.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const position = e.clientY < midpoint ? 'before' : 'after';
+
+    setDropIndicator({ index, position });
   };
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    setDropIndicator(null);
 
     const featureId = e.dataTransfer.getData('featureId');
     const sourceStatus = e.dataTransfer.getData('sourceStatus');
 
-    if (sourceStatus === status) return; // Same column, no change
+    // Cross-column move: update status (sortOrder auto-set by API)
+    if (sourceStatus !== status) {
+      await fetch(`/api/features/${featureId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      onFeatureUpdated();
+      return;
+    }
 
-    await fetch(`/api/features/${featureId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    // Same-column reorder: update sortOrder
+    if (dropIndicator) {
+      const newSortOrder = calculateNewSortOrder(
+        features,
+        dropIndicator.index,
+        dropIndicator.position,
+        featureId
+      );
 
-    onFeatureUpdated();
+      await fetch(`/api/features/${featureId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortOrder: newSortOrder }),
+      });
+      onFeatureUpdated();
+    }
+  };
+
+  const setCardRef = (index: number) => (el: HTMLDivElement | null) => {
+    if (el) {
+      cardRefs.current.set(index, el);
+    } else {
+      cardRefs.current.delete(index);
+    }
   };
 
   return (
@@ -97,12 +183,26 @@ export function StatusPanel({
           </div>
         ) : (
           <div>
-            {features.map((feature) => (
-              <FeatureCard
-                key={feature.id}
-                feature={feature}
-                onFeatureClick={onFeatureClick}
-              />
+            {features.map((feature, index) => (
+              <div key={feature.id} className="relative">
+                {/* Drop indicator line - before */}
+                {dropIndicator?.index === index && dropIndicator?.position === 'before' && (
+                  <div className="absolute top-0 left-2 right-2 h-0.5 bg-primary rounded-full z-10 shadow-sm shadow-primary/50" />
+                )}
+                <div
+                  ref={setCardRef(index)}
+                  onDragOver={(e) => handleCardDragOver(e, index)}
+                >
+                  <FeatureCard
+                    feature={feature}
+                    onFeatureClick={onFeatureClick}
+                  />
+                </div>
+                {/* Drop indicator line - after */}
+                {dropIndicator?.index === index && dropIndicator?.position === 'after' && (
+                  <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full z-10 shadow-sm shadow-primary/50" />
+                )}
+              </div>
             ))}
           </div>
         )}

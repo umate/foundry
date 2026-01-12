@@ -35,12 +35,16 @@ export async function POST(
       // Extract a short title from the idea (first ~50 chars)
       const title = ideaText.slice(0, 50) + (ideaText.length > 50 ? '...' : '');
 
+      // Get max sort order for idea status to place new feature at top
+      const maxSortOrder = await featureRepository.getMaxSortOrderForStatus(projectId, 'idea');
+
       const feature = await featureRepository.create({
         projectId,
         title,
         description: null,
         status: 'idea' as const,
         priority: 0,
+        sortOrder: maxSortOrder + 1000,
         requestCount: 0,
         initialIdea: ideaText,
       });
@@ -57,6 +61,9 @@ export async function POST(
     // Break down the idea using AI
     const breakdown = await breakdownIdea(ideaText, projectContext);
 
+    // Get max sort order for idea status to place new features at top
+    const maxSortOrder = await featureRepository.getMaxSortOrderForStatus(projectId, 'idea');
+
     // Create features in database
     const features = await featureRepository.createMany(
       breakdown.features.map((feature, index) => ({
@@ -65,6 +72,7 @@ export async function POST(
         description: feature.description,
         status: 'idea' as const,
         priority: index,
+        sortOrder: maxSortOrder + (breakdown.features.length - index) * 1000,
         requestCount: 0,
       }))
     );
