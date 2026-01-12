@@ -71,6 +71,11 @@ export function FeatureCard({
         <div className="mt-0.5">{getFeatureIcon(feature.status)}</div>
         <span className="flex-1 font-sans-serif text-sm font-medium line-clamp-2 leading-tight">
           {feature.title}
+          {(feature.messageCount ?? 0) > 0 && (
+            <span className="text-[10px] text-muted-foreground/60 font-mono ml-2">
+              · {feature.messageCount} msgs
+            </span>
+          )}
         </span>
       </div>
 

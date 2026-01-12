@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { FeatureMessage, NewFeatureMessage } from '@/db/schema';
 
@@ -46,6 +46,21 @@ export class FeatureMessageRepository {
     return await this.createMany(
       messages.map(m => ({ ...m, featureId }))
     );
+  }
+
+  async getMessageCountsByFeatureIds(featureIds: string[]): Promise<Map<string, number>> {
+    if (featureIds.length === 0) return new Map();
+
+    const counts = await db
+      .select({
+        featureId: schema.featureMessages.featureId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.featureMessages)
+      .where(inArray(schema.featureMessages.featureId, featureIds))
+      .groupBy(schema.featureMessages.featureId);
+
+    return new Map(counts.map(c => [c.featureId, c.count]));
   }
 }
 

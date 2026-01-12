@@ -235,6 +235,75 @@
   opacity: 0.7;
 }
 
+/* MDXEditor dark mode - override base variables to match design system */
+.dark .mdxeditor {
+  --basePageBg: var(--card);
+  --baseBase: var(--card);
+  --baseBgSubtle: var(--muted);
+  --baseBg: var(--muted);
+  --baseBgHover: color-mix(in srgb, var(--muted) 80%, white);
+  --baseBgActive: color-mix(in srgb, var(--muted) 60%, white);
+  --baseLine: var(--border);
+  --baseBorder: var(--border);
+  --baseBorderHover: var(--border);
+  --baseSolid: var(--muted-foreground);
+  --baseSolidHover: var(--foreground);
+  --baseText: var(--muted-foreground);
+  --baseTextContrast: var(--foreground);
+}
+
+/* CodeMirror font size */
+.mdxeditor .cm-editor {
+  font-size: 0.8125rem !important; /* ~13px, down from default 14px */
+}
+
+/* CodeMirror dark mode - override basicLight theme */
+.dark .mdxeditor .cm-editor {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+.dark .mdxeditor .cm-editor .cm-scroller {
+  background-color: var(--muted) !important;
+}
+
+.dark .mdxeditor .cm-editor .cm-gutters {
+  background-color: var(--card) !important;
+  color: var(--muted-foreground) !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+.dark .mdxeditor .cm-editor .cm-activeLineGutter {
+  background-color: var(--muted) !important;
+}
+
+.dark .mdxeditor .cm-editor .cm-activeLine {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .mdxeditor .cm-editor .cm-content {
+  caret-color: var(--foreground) !important;
+}
+
+.dark .mdxeditor .cm-editor .cm-cursor {
+  border-left-color: var(--foreground) !important;
+}
+
+.dark .mdxeditor .cm-editor .cm-selectionBackground,
+.dark .mdxeditor .cm-editor .cm-content ::selection {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* CodeMirror wrapper styling */
+.dark .mdxeditor [class*="_codeMirrorWrapper"] {
+  background-color: var(--muted) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .mdxeditor [class*="_codeMirrorToolbar"] {
+  background-color: var(--card) !important;
+}
+
 /* Markdown Content Styles (used in PRD editor and chat) */
 .markdown-content,
 .spec-editor-content {
@@ -290,9 +359,18 @@
     @apply text-secondary underline hover:opacity-80;
   }
 
-  /* Code */
+  /* Inline code */
   code {
-    @apply bg-muted px-1.5 py-0.5 rounded-sm text-sm;
+    @apply px-1.5 py-0.5 rounded-sm text-sm font-mono bg-black/10;
+  }
+
+  /* Code blocks */
+  pre {
+    @apply my-3 p-3 rounded-sm overflow-x-auto text-sm bg-black/5;
+  }
+
+  pre code {
+    @apply p-0 bg-transparent;
   }
 
   /* Strong/Bold */
@@ -304,6 +382,17 @@
   em {
     @apply italic;
   }
+}
+
+/* Dark mode overrides for markdown code */
+.dark .markdown-content code,
+.dark .spec-editor-content code {
+  @apply bg-white/15;
+}
+
+.dark .markdown-content pre,
+.dark .spec-editor-content pre {
+  @apply bg-white/10;
 }
 
 

@@ -291,6 +291,13 @@ export function FeatureChat({
   }, [hydratedMessages, onSpecGenerated, hasSavedSpec]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Escape cancels generation
+    if (e.key === "Escape" && isLoading) {
+      e.preventDefault();
+      e.nativeEvent.stopImmediatePropagation();
+      handleStop();
+      return;
+    }
     // Enter sends, Shift+Enter for newline
     if (e.key === "Enter" && !e.shiftKey && !isLoading && input.trim()) {
       e.preventDefault();
@@ -308,6 +315,15 @@ export function FeatureChat({
       setInput("");
     }
   };
+
+  const handleSpecAction = useCallback(() => {
+    const message = hasSavedSpec
+      ? "Based on everything discussed so far, please update the spec to reflect the changes."
+      : "Based on everything discussed so far, please generate the spec for this feature.";
+
+    saveMessage("user", { parts: [{ type: "text", text: message }] });
+    sendMessage({ text: message });
+  }, [hasSavedSpec, saveMessage, sendMessage]);
 
   const handleClarificationSubmit = useCallback(
     (responses: Map<number, string | string[]>, questions: ClarificationQuestion[]) => {
@@ -598,44 +614,54 @@ export function FeatureChat({
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type your response..."
-                disabled={isLoading}
                 className="min-h-[80px] resize-none border-0 focus-visible:ring-0 pb-10"
                 rows={3}
               />
 
               {/* Bottom toolbar - positioned inside container */}
               <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-                {/* Left: Reset button */}
-                <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-                  <AlertDialogTrigger asChild>
-                    <button
-                      type="button"
-                      className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      title="Reset chat"
-                    >
-                      <ArrowsClockwise className="size-3.5" />
-                    </button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Reset Chat Session?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete all chat messages for this feature. Your spec and feature data will
-                        be preserved.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel asChild>
-                        <Button variant="outline">Cancel</Button>
-                      </AlertDialogCancel>
-                      <AlertDialogAction asChild>
-                        <Button variant="secondary" onClick={handleResetSession}>
-                          Reset Session
-                        </Button>
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {/* Left: Reset and Spec action buttons */}
+                <div className="flex items-center gap-1">
+                  <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title="Reset chat"
+                      >
+                        <ArrowsClockwise className="size-3.5" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reset Chat Session?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete all chat messages for this feature. Your spec and feature data will
+                          be preserved.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                          <Button variant="outline">Cancel</Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                          <Button variant="secondary" onClick={handleResetSession}>
+                            Reset Session
+                          </Button>
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <button
+                    type="button"
+                    onClick={handleSpecAction}
+                    disabled={isLoading}
+                    className="px-2 py-0.5 rounded-sm text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    {hasSavedSpec ? "Update Spec" : "Generate Spec"}
+                  </button>
+                </div>
 
                 {/* Right: Send or Stop */}
                 {isLoading ? (
@@ -652,7 +678,7 @@ export function FeatureChat({
                 ) : (
                   <Button
                     type="submit"
-                    variant="default"
+                    variant={input.trim() ? "secondary" : "default"}
                     size="icon-sm"
                     disabled={!input.trim()}
                     title="Send (Enter)"

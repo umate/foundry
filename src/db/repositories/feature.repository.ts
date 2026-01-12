@@ -1,6 +1,7 @@
 import { eq, and, ne } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { Feature, NewFeature } from '@/db/schema';
+import { featureMessageRepository } from './feature-message.repository';
 
 export class FeatureRepository {
   async findById(id: string): Promise<Feature | null> {
@@ -24,18 +25,28 @@ export class FeatureRepository {
   }
 
   async findByProjectIdGrouped(projectId: string): Promise<{
-    idea: Feature[];
-    scoped: Feature[];
-    current: Feature[];
-    done: Feature[];
+    idea: (Feature & { messageCount?: number })[];
+    scoped: (Feature & { messageCount?: number })[];
+    current: (Feature & { messageCount?: number })[];
+    done: (Feature & { messageCount?: number })[];
   }> {
     const features = await this.findByProjectId(projectId);
 
+    // Fetch message counts for all features
+    const featureIds = features.map(f => f.id);
+    const messageCounts = await featureMessageRepository.getMessageCountsByFeatureIds(featureIds);
+
+    // Enrich features with message counts
+    const enrichedFeatures = features.map(f => ({
+      ...f,
+      messageCount: messageCounts.get(f.id) ?? 0,
+    }));
+
     return {
-      idea: features.filter(f => f.status === 'idea'),
-      scoped: features.filter(f => f.status === 'scoped'),
-      current: features.filter(f => f.status === 'ready'),
-      done: features.filter(f => f.status === 'done'),
+      idea: enrichedFeatures.filter(f => f.status === 'idea'),
+      scoped: enrichedFeatures.filter(f => f.status === 'scoped'),
+      current: enrichedFeatures.filter(f => f.status === 'ready'),
+      done: enrichedFeatures.filter(f => f.status === 'done'),
     };
   }
 

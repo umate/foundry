@@ -21,6 +21,7 @@ export interface Feature {
   requestCount: number;
   summary: string | null;
   subtasks: SubTask[];
+  messageCount?: number;
 }
 
 export interface FeaturesByStatus {
