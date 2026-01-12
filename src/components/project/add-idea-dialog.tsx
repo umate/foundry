@@ -25,6 +25,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
   const formRef = useRef<HTMLFormElement>(null);
   const [ideaText, setIdeaText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<"save" | "refine" | null>(null);
   const [error, setError] = useState("");
 
   // Reset state when dialog opens
@@ -32,6 +33,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
     if (open) {
       setIdeaText("");
       setLoading(false);
+      setLoadingAction(null);
       setError("");
     }
   }, [open]);
@@ -39,14 +41,49 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.metaKey && ideaText.trim() && !loading) {
       e.preventDefault();
-      formRef.current?.requestSubmit();
+      handleSaveForLater();
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveForLater = async () => {
     setError("");
     setLoading(true);
+    setLoadingAction("save");
+
+    try {
+      // Create feature without title generation
+      const response = await fetch(`/api/projects/${projectId}/ideas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ideaText: ideaText.trim(),
+          createOnly: true
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create feature");
+      }
+
+      // Reset form and close dialog immediately
+      setIdeaText("");
+      setLoading(false);
+      setLoadingAction(null);
+      onOpenChange(false);
+
+      // Refresh the list but don't open sidebar
+      onSuccess?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create feature");
+      setLoading(false);
+      setLoadingAction(null);
+    }
+  };
+
+  const handleAddAndRefine = async () => {
+    setError("");
+    setLoading(true);
+    setLoadingAction("refine");
 
     try {
       // Step 1: Create feature
@@ -73,6 +110,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
       // Step 3: Reset form and close dialog
       setIdeaText("");
       setLoading(false);
+      setLoadingAction(null);
       onOpenChange(false);
 
       // Step 4: Notify parent to reload and open sidebar
@@ -81,6 +119,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create feature");
       setLoading(false);
+      setLoadingAction(null);
     }
   };
 
@@ -92,27 +131,27 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-mono uppercase tracking-wider flex items-center gap-2">
             <Lightbulb weight="bold" />
             New Idea
           </DialogTitle>
           <DialogDescription>
-            Describe your feature idea. You&apos;ll refine it with AI on the next page.
+            Describe your feature idea. Save it for later or start refining with AI right away.
           </DialogDescription>
         </DialogHeader>
 
-        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+        <form ref={formRef} className="space-y-4">
           <div className="space-y-2">
             <Textarea
               value={ideaText}
               onChange={(e) => setIdeaText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="I want to add a feature that..."
-              rows={8}
+              rows={5}
               required
-              className="resize-none min-h-[160px] max-h-[240px] overflow-y-auto"
+              className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
               Be as detailed or brief as you like. The AI will help you flesh it out.
@@ -130,11 +169,20 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
               Cancel
             </Button>
             <Button
-              type="submit"
+              type="button"
+              variant="secondary"
+              onClick={handleAddAndRefine}
+              disabled={loading || !ideaText.trim()}
+            >
+              {loadingAction === "refine" ? "Creating..." : "Add & Refine"}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveForLater}
               disabled={loading || !ideaText.trim()}
               shortcut={{ key: "enter", meta: true }}
             >
-              {loading ? "Generating..." : "Start Refining"}
+              {loadingAction === "save" ? "Saving..." : "Save for Later"}
             </Button>
           </DialogFooter>
         </form>

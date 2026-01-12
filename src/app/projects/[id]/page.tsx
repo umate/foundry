@@ -8,6 +8,7 @@ import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
 import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
 import { ProjectSettingsDialog } from '@/components/project/project-settings-dialog';
 import { FeatureChatPanel } from '@/components/project/feature-chat-panel';
+import { CodeReviewSheet } from '@/components/project/code-review-sheet';
 import { BackgroundStreamProvider, useBackgroundStream } from '@/components/project/background-stream-context';
 import { FeaturesByStatus, Feature, mapDbStatusToUi } from '@/types/feature';
 
@@ -39,6 +40,7 @@ export default function ProjectPage({
   const [addIdeaOpen, setAddIdeaOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [codeReviewOpen, setCodeReviewOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
 
   // Auto-open panel from URL query param
@@ -148,6 +150,8 @@ export default function ProjectPage({
         setCreateProjectOpen={setCreateProjectOpen}
         settingsOpen={settingsOpen}
         setSettingsOpen={setSettingsOpen}
+        codeReviewOpen={codeReviewOpen}
+        setCodeReviewOpen={setCodeReviewOpen}
         handleIdeaAdded={handleIdeaAdded}
         handleFeatureUpdated={handleFeatureUpdated}
         handleFeatureClick={handleFeatureClick}
@@ -170,6 +174,8 @@ function ProjectPageContent({
   setCreateProjectOpen,
   settingsOpen,
   setSettingsOpen,
+  codeReviewOpen,
+  setCodeReviewOpen,
   handleIdeaAdded,
   handleFeatureUpdated,
   handleFeatureClick,
@@ -186,6 +192,8 @@ function ProjectPageContent({
   setCreateProjectOpen: (open: boolean) => void;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
+  codeReviewOpen: boolean;
+  setCodeReviewOpen: (open: boolean) => void;
   handleIdeaAdded: () => void;
   handleFeatureUpdated: () => void;
   handleFeatureClick: (featureId: string) => void;
@@ -208,6 +216,7 @@ function ProjectPageContent({
         onAddIdea={() => setAddIdeaOpen(true)}
         onCreateProject={() => setCreateProjectOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenCodeReview={() => setCodeReviewOpen(true)}
       />
 
       <PanelBoard
@@ -236,6 +245,12 @@ function ProjectPageContent({
         onOpenChange={setSettingsOpen}
         project={project}
         onUpdate={handleProjectUpdated}
+      />
+
+      <CodeReviewSheet
+        open={codeReviewOpen}
+        onOpenChange={setCodeReviewOpen}
+        projectId={project.id}
       />
 
       <FeatureChatPanel

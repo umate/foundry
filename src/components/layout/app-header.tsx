@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PlusIcon, GearIcon, TrashIcon } from "@phosphor-icons/react";
+import { PlusIcon, GearIcon, TrashIcon, GitDiffIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
 import { ThemeToggle } from "./theme-toggle";
@@ -13,10 +13,11 @@ interface AppHeaderProps {
   onAddIdea: () => void;
   onCreateProject: () => void;
   onOpenSettings?: () => void;
+  onOpenCodeReview?: () => void;
   onDeleteFeature?: () => void;
 }
 
-export function AppHeader({ currentProjectId, currentProjectName, featureName, onAddIdea, onCreateProject, onOpenSettings, onDeleteFeature }: AppHeaderProps) {
+export function AppHeader({ currentProjectId, currentProjectName, featureName, onAddIdea, onCreateProject, onOpenSettings, onOpenCodeReview, onDeleteFeature }: AppHeaderProps) {
   return (
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
       {/* Left: Logo + Project Selector + Feature Breadcrumb */}
@@ -41,6 +42,11 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
         <ThemeToggle />
+        {currentProjectId && onOpenCodeReview && (
+          <Button variant="ghost" size="icon" onClick={onOpenCodeReview} title="Code Review">
+            <GitDiffIcon weight="bold" className="h-4 w-4" />
+          </Button>
+        )}
         {currentProjectId && onOpenSettings && (
           <Button variant="ghost" size="icon" onClick={onOpenSettings}>
             <GearIcon weight="bold" className="h-4 w-4" />
