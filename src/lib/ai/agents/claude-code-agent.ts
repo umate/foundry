@@ -1,6 +1,20 @@
 import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import type { SDKMessage, SDKAssistantMessage, SDKResultMessage } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
+import { readFile } from "fs/promises";
+import path from "path";
+
+// --- CLAUDE.md Reader ---
+
+async function readClaudeMd(repoPath: string | null): Promise<string | null> {
+  if (!repoPath) return null;
+  try {
+    const claudeMdPath = path.join(repoPath, "CLAUDE.md");
+    return await readFile(claudeMdPath, "utf-8");
+  } catch {
+    return null; // File doesn't exist or can't be read
+  }
+}
 
 // --- Types ---
 
@@ -53,8 +67,22 @@ function createFoundryTools() {
 
 // --- System Prompt ---
 
-function buildSystemPrompt(project: ProjectContext, currentSpecMarkdown: string | null): string {
-  const projectContext = `## PROJECT CONTEXT (READ THIS CAREFULLY)
+function buildSystemPrompt(
+  project: ProjectContext,
+  currentSpecMarkdown: string | null,
+  claudeMdContent: string | null
+): string {
+  const claudeMdSection = claudeMdContent
+    ? `## CODEBASE INSTRUCTIONS (from CLAUDE.md)
+
+${claudeMdContent}
+
+---
+
+`
+    : "";
+
+  const projectContext = `${claudeMdSection}## PROJECT CONTEXT (READ THIS CAREFULLY)
 
 **Product Name:** ${project.name}
 
@@ -204,7 +232,8 @@ export async function* createClaudeCodeStream(
   messages: ChatMessage[]
 ): AsyncGenerator<SDKMessage> {
   const foundryTools = createFoundryTools();
-  const systemPrompt = buildSystemPrompt(project, currentSpecMarkdown);
+  const claudeMdContent = await readClaudeMd(project.repoPath);
+  const systemPrompt = buildSystemPrompt(project, currentSpecMarkdown, claudeMdContent);
   const prompt = formatMessagesAsPrompt(messages);
 
   // Configure allowed tools
