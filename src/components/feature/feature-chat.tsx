@@ -5,6 +5,7 @@ import { useFeatureStream } from "@/components/project/background-stream-context
 import type { DisplayMessage, ClarificationQuestion, MessagePart } from "@/lib/hooks/use-claude-code-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon, FloppyDiskIcon, PencilIcon, WarningIcon } from "@phosphor-icons/react";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
@@ -126,6 +127,7 @@ export function FeatureChat({
   const [resolvedChanges, setResolvedChanges] = useState<Map<string, "accepted" | "rejected">>(new Map());
   const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [thinkingEnabled, setThinkingEnabled] = useState(false);
   const hasSentInitialIdeaRef = useRef(false);
   const hasNotifiedSpecRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -169,6 +171,7 @@ export function FeatureChat({
       contextSendMessage(content, {
         currentSpecMarkdown,
         featureTitle,
+        thinkingEnabled,
         onSpecGenerated: hasSavedSpec ? undefined : onSpecGenerated,
         onPendingChange: hasPendingChange ? undefined : onPendingChange
       });
@@ -177,6 +180,7 @@ export function FeatureChat({
       contextSendMessage,
       currentSpecMarkdown,
       featureTitle,
+      thinkingEnabled,
       hasSavedSpec,
       onSpecGenerated,
       hasPendingChange,
@@ -695,8 +699,19 @@ export function FeatureChat({
 
               {/* Bottom toolbar - positioned inside container */}
               <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-                {/* Left: Reset and Spec action buttons */}
-                <div className="flex items-center gap-1">
+                {/* Left: Thinking toggle */}
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Switch
+                    checked={thinkingEnabled}
+                    onCheckedChange={setThinkingEnabled}
+                    disabled={isLoading}
+                    className="scale-75"
+                  />
+                  <span className="text-xs font-mono text-muted-foreground">Thinking</span>
+                </label>
+
+                {/* Right: Reset, Spec action, and Send/Stop */}
+                <div className="flex items-center gap-2">
                   <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
                     <AlertDialogTrigger asChild>
                       <button
@@ -736,32 +751,31 @@ export function FeatureChat({
                   >
                     {hasSavedSpec ? "Update Spec" : "Generate Spec"}
                   </button>
-                </div>
 
-                {/* Right: Send or Stop */}
-                {isLoading ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon-sm"
-                    onClick={handleStop}
-                    title="Stop"
-                    className="size-7"
-                  >
-                    <StopIcon weight="bold" className="size-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    variant={input.trim() ? "secondary" : "default"}
-                    size="icon-sm"
-                    disabled={!input.trim()}
-                    title="Send (Enter)"
-                    className="size-7"
-                  >
-                    <PaperPlaneRightIcon weight="bold" className="size-4" />
-                  </Button>
-                )}
+                  {isLoading ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon-sm"
+                      onClick={handleStop}
+                      title="Stop"
+                      className="size-7"
+                    >
+                      <StopIcon weight="bold" className="size-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      variant={input.trim() ? "secondary" : "default"}
+                      size="icon-sm"
+                      disabled={!input.trim()}
+                      title="Send (Enter)"
+                      className="size-7"
+                    >
+                      <PaperPlaneRightIcon weight="bold" className="size-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </form>

@@ -242,7 +242,8 @@ export function isResultMessage(msg: SDKMessage): msg is SDKResultMessage {
 export async function* createClaudeCodeStream(
   project: ProjectContext,
   currentSpecMarkdown: string | null,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  thinkingEnabled: boolean = false
 ): AsyncGenerator<SDKMessage> {
   const foundryTools = createFoundryTools();
   const claudeMdContent = await readClaudeMd(project.repoPath);
@@ -267,6 +268,7 @@ export async function* createClaudeCodeStream(
     allowedTools,
     permissionMode: "default" as const, // Use default to enable canUseTool handler
     maxTurns: 50, // Increased from 12 to allow complex tasks to complete
+    ...(thinkingEnabled && { thinkingBudget: 10000 }), // Enable extended thinking when toggle is on
 
     // Handle AskUserQuestion permission - return empty answers so tool completes without error
     // The agent will wait for user's next message per system prompt instructions

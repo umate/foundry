@@ -14,6 +14,7 @@ interface StreamState {
 interface StreamOptions {
   currentSpecMarkdown?: string;
   featureTitle?: string;
+  thinkingEnabled?: boolean;
   onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
 }
@@ -132,6 +133,7 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
       featureId,
       messagesWithUser,
       options.currentSpecMarkdown,
+      options.thinkingEnabled ?? false,
       {
         onStatusChange: (status) => {
           console.log(`[BackgroundContext] Status change for ${featureId}: ${status}`);

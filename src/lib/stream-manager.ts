@@ -59,6 +59,7 @@ export async function startStream(
   featureId: string,
   messages: DisplayMessage[],
   currentSpecMarkdown: string | undefined,
+  thinkingEnabled: boolean,
   callbacks: StreamCallbacks,
   abortController: AbortController
 ): Promise<void> {
@@ -87,7 +88,8 @@ export async function startStream(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         messages: apiMessages,
-        currentSpecMarkdown
+        currentSpecMarkdown,
+        thinkingEnabled
       }),
       signal: abortController.signal
     });

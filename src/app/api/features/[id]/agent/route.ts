@@ -105,6 +105,7 @@ export async function POST(
   const body = await req.json();
   const messages: ChatMessage[] = body.messages || [];
   const currentSpecMarkdown: string | null = body.currentSpecMarkdown ?? null;
+  const thinkingEnabled: boolean = body.thinkingEnabled ?? false;
 
   if (!Array.isArray(messages)) {
     return new Response(JSON.stringify({ error: "Messages array required" }), {
@@ -138,7 +139,8 @@ export async function POST(
             repoPath: project.repoPath
           },
           currentSpecMarkdown,
-          messages
+          messages,
+          thinkingEnabled
         )) {
           messageCount++;
           const msgType = (message as { type?: string }).type || "unknown";
