@@ -59,6 +59,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [loading, setLoading] = useState(true);
   const [openPanel, setOpenPanel] = useState<'spec' | 'code-review' | null>(null);
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
+  const [diffFileCount, setDiffFileCount] = useState<number | null>(null);
 
   // Get background stream for sending implementation messages
   const { sendMessage: bgSendMessage } = useBackgroundStream();
@@ -77,6 +78,18 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const isOpen = featureId !== null;
+
+  // Fetch diff file count for code review tab badge
+  useEffect(() => {
+    if (feature?.status === "current" || feature?.status === "done") {
+      fetch(`/api/git/diff?projectId=${projectId}`)
+        .then(res => res.json())
+        .then(data => setDiffFileCount(data.files?.length ?? 0))
+        .catch(() => setDiffFileCount(null));
+    } else {
+      setDiffFileCount(null);
+    }
+  }, [projectId, feature?.status]);
 
   // Handle escape key - close sidebar first, then panel
   useEffect(() => {
@@ -431,7 +444,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         {/* Code Review Panel - Collapsible side bar (only when current or done) */}
         {(feature?.status === "current" || feature?.status === "done") && (
           <CollapsibleSideBar
-            label="CODE REVIEW"
+            label={diffFileCount ? `CODE REVIEW (${diffFileCount})` : "CODE REVIEW"}
             isExpanded={openPanel === 'code-review'}
             onToggle={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
             hasContent={true}

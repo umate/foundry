@@ -43,7 +43,7 @@ export function ProjectSettingsDialog({
   const [apiKey, setApiKey] = useState(project.widgetApiKey || '');
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
-  const [copied, setCopied] = useState<'key' | 'embed' | null>(null);
+  const [copied, setCopied] = useState<'key' | 'embed' | 'agent' | null>(null);
   const [error, setError] = useState('');
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
 
@@ -116,6 +116,32 @@ export function ProjectSettingsDialog({
 window.FOUNDRY_API_KEY = "${apiKey}";
 </script>
 <script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget/foundry-widget.js"></script>`
+    : '';
+
+  const agentInstructions = apiKey
+    ? `# Widget Integration Task
+
+## Project: ${project.name}
+
+## Widget Embed Code
+Add this to your HTML:
+
+\`\`\`html
+${embedCode}
+\`\`\`
+
+## Instructions
+Help me integrate this feedback widget into my project. The widget:
+- Collects user feedback with element selection
+- Sends data to ${typeof window !== 'undefined' ? window.location.origin : ''}/api/widget/submit
+- Can be customized with these window variables:
+  - FOUNDRY_POSITION: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
+  - FOUNDRY_COLOR: hex color for the button (default: '#52525b')
+
+Please:
+1. Identify the best place to add the embed code
+2. Suggest any customization based on the project's design
+3. Help test the integration works correctly`
     : '';
 
   return (
@@ -271,6 +297,31 @@ window.FOUNDRY_API_KEY = "${apiKey}";
                   >
                     <CopyIcon weight="bold" className="h-3 w-3 mr-1" />
                     {copied === 'embed' ? 'Copied!' : 'Copy'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {apiKey && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium font-mono uppercase tracking-wider">
+                  Coding Engine Instructions
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Copy this prompt to your coding agent (Claude Code, Cursor, etc.)
+                </p>
+                <div className="relative">
+                  <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto whitespace-pre-wrap max-h-48">
+                    {agentInstructions}
+                  </pre>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(agentInstructions, 'agent')}
+                  >
+                    <CopyIcon weight="bold" className="h-3 w-3 mr-1" />
+                    {copied === 'agent' ? 'Copied!' : 'Copy'}
                   </Button>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Serif, Space_Mono } from "next/font/google";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -49,6 +50,19 @@ export default function RootLayout({
           {children}
           <Toaster />
         </ThemeProvider>
+
+        {/* Foundry Feedback Widget */}
+        <Script id="foundry-widget-config" strategy="beforeInteractive">
+          {`
+            window.FOUNDRY_API_KEY = "fnd_f62e3b6dc7591901c63513ffde573791";
+            window.FOUNDRY_POSITION = "bottom-right";
+            window.FOUNDRY_COLOR = "#E85102";
+          `}
+        </Script>
+        <Script
+          src="http://localhost:3005/widget/foundry-widget.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
