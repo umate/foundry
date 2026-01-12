@@ -212,6 +212,7 @@ export async function* createClaudeCodeStream(
     "Read",
     "Glob",
     "Grep", // Codebase understanding
+    "Bash", // Build/lint commands
     "AskUserQuestion", // Clarifying questions - agent MUST stop after calling
     "TodoWrite", // Task tracking
     "mcp__foundry__generateSpec",

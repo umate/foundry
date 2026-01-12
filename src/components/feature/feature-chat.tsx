@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { FeatureMessage } from "@/db/schema";
 import { PendingChangeCard } from "./pending-change-card";
 import { ClarificationCard } from "./clarification-card";
@@ -423,7 +424,7 @@ export function FeatureChat({
                         className={message.role === "user" ? "rounded-md py-0.5 px-2 bg-background" : ""}
                       >
                         <div className="text-sm markdown-content max-w-none">
-                          <ReactMarkdown>{part.text}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
                         </div>
                       </div>
                     );

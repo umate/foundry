@@ -56,6 +56,15 @@ interface SDKUserMessage {
     stdout?: string;
     stderr?: string;
     exitCode?: number;
+    // TodoWrite results
+    oldTodos?: unknown;
+    newTodos?: unknown;
+    // Edit tool results
+    type?: string;
+    structuredPatch?: unknown;
+    filePath?: string;
+    // Error results
+    error?: string | unknown;
   };
 }
 

@@ -105,7 +105,7 @@ export function ProjectSettingsDialog({
     }
   };
 
-  const copyToClipboard = (text: string, type: 'key' | 'embed') => {
+  const copyToClipboard = (text: string, type: 'key' | 'embed' | 'agent') => {
     navigator.clipboard.writeText(text);
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);

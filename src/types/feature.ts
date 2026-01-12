@@ -18,6 +18,7 @@ export interface Feature {
   description: string | null;
   status: FeatureStatus;
   priority: number;
+  sortOrder: number;
   requestCount: number;
   summary: string | null;
   subtasks: SubTask[];
