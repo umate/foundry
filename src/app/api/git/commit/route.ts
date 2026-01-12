@@ -1,9 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import { promisify } from "util";
 import { projectRepository } from "@/db/repositories/project.repository";
 
 const execAsync = promisify(exec);
+
+// Helper to run git commit with message via stdin (preserves newlines)
+function gitCommitWithMessage(cwd: string, message: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("git", ["commit", "-F", "-"], { cwd });
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data) => { stdout += data; });
+    proc.stderr.on("data", (data) => { stderr += data; });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve(stdout);
+      } else {
+        reject(new Error(stderr || stdout));
+      }
+    });
+
+    proc.stdin.write(message);
+    proc.stdin.end();
+  });
+}
 
 interface CommitRequest {
   projectId: string;
@@ -46,12 +69,9 @@ export async function POST(request: NextRequest) {
     await execAsync("git add -A", { cwd: project.repoPath });
 
     // Commit with the provided message
-    // Use JSON.stringify to safely escape the message for shell
+    // Use -F - to pass message via stdin to preserve newlines properly
     const sanitizedMessage = message.trim();
-    const { stdout } = await execAsync(
-      `git commit -m ${JSON.stringify(sanitizedMessage)}`,
-      { cwd: project.repoPath }
-    );
+    const stdout = await gitCommitWithMessage(project.repoPath, sanitizedMessage);
 
     // Extract commit hash from output
     const hashMatch = stdout.match(/\[[\w-]+ ([a-f0-9]+)\]/);
