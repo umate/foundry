@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { GearSix, Lightbulb, Target, Play, CheckCircle } from '@phosphor-icons/react';
+import { GearSix, Lightbulb, Target, Play, CheckCircle, PlusIcon } from '@phosphor-icons/react';
 import { Feature, FeatureStatus, STATUS_LABELS } from '@/types/feature';
 import { FeatureCard } from './feature-card';
+import { Button } from '@/components/ui/button';
 
 interface StatusPanelProps {
   status: FeatureStatus;
   features: Feature[];
   onFeatureUpdated: () => void;
   onFeatureClick: (featureId: string) => void;
+  onAddIdea?: () => void;
 }
 
 interface DropIndicator {
@@ -72,6 +74,7 @@ export function StatusPanel({
   features,
   onFeatureUpdated,
   onFeatureClick,
+  onAddIdea,
 }: StatusPanelProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
@@ -204,6 +207,16 @@ export function StatusPanel({
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Add Idea button - only in idea column */}
+        {status === 'idea' && onAddIdea && (
+          <div className="p-2">
+            <Button variant="outline" size="sm" onClick={onAddIdea} className="w-full">
+              <PlusIcon weight="bold" />
+              Add Idea
+            </Button>
           </div>
         )}
       </div>

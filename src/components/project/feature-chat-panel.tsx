@@ -436,7 +436,14 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
             onToggle={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
             hasContent={true}
           >
-            <CodeReviewViewer projectId={projectId} />
+            <CodeReviewViewer
+              projectId={projectId}
+              featureId={featureId}
+              onFeatureCompleted={() => {
+                setFeature((prev) => prev ? { ...prev, status: "done" } : null);
+                onFeatureUpdated();
+              }}
+            />
           </CollapsibleSideBar>
         )}
 

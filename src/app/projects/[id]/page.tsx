@@ -214,6 +214,7 @@ function ProjectPageContent({
         features={project.features}
         onFeatureUpdated={handleFeatureUpdated}
         onFeatureClick={handleFeatureClick}
+        onAddIdea={() => setAddIdeaOpen(true)}
       />
 
       <AddIdeaDialog

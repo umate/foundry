@@ -30,6 +30,8 @@ interface DiffResponse {
 
 interface CodeReviewViewerProps {
   projectId: string;
+  featureId?: string;
+  onFeatureCompleted?: () => void;
 }
 
 function DiffStats({ additions, deletions }: { additions: number; deletions: number }) {
@@ -112,7 +114,7 @@ function FileDiffItem({ file, isExpanded, onToggle }: { file: FileDiff; isExpand
   );
 }
 
-export function CodeReviewViewer({ projectId }: CodeReviewViewerProps) {
+export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted }: CodeReviewViewerProps) {
   const [data, setData] = useState<DiffResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -263,12 +265,14 @@ export function CodeReviewViewer({ projectId }: CodeReviewViewerProps) {
         open={commitDialogOpen}
         onOpenChange={setCommitDialogOpen}
         projectId={projectId}
+        featureId={featureId}
         diffSummary={{
           files: data?.files.length ?? 0,
           additions: data?.totalAdditions ?? 0,
           deletions: data?.totalDeletions ?? 0
         }}
         onSuccess={fetchDiff}
+        onFeatureCompleted={onFeatureCompleted}
       />
     </div>
   );

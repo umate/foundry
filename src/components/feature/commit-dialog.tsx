@@ -17,20 +17,24 @@ interface CommitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
+  featureId?: string;
   diffSummary: {
     files: number;
     additions: number;
     deletions: number;
   };
   onSuccess?: () => void;
+  onFeatureCompleted?: () => void;
 }
 
 export function CommitDialog({
   open,
   onOpenChange,
   projectId,
+  featureId,
   diffSummary,
-  onSuccess
+  onSuccess,
+  onFeatureCompleted
 }: CommitDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const hasGeneratedRef = useRef(false);
@@ -93,6 +97,21 @@ export function CommitDialog({
 
       if (!response.ok) {
         throw new Error(result.error || "Failed to commit changes");
+      }
+
+      // Mark feature as done if featureId provided
+      if (featureId) {
+        try {
+          await fetch(`/api/features/${featureId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "done" })
+          });
+          onFeatureCompleted?.();
+        } catch {
+          // Feature completion is non-critical, don't block commit success
+          console.error("Failed to mark feature as done");
+        }
       }
 
       // Success - close dialog and refresh

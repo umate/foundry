@@ -9,12 +9,14 @@ interface PanelBoardProps {
   features: FeaturesByStatus;
   onFeatureUpdated: () => void;
   onFeatureClick: (featureId: string) => void;
+  onAddIdea?: () => void;
 }
 
 export function PanelBoard({
   features,
   onFeatureUpdated,
   onFeatureClick,
+  onAddIdea,
 }: PanelBoardProps) {
   const handleArchive = async (featureId: string) => {
     await fetch(`/api/features/${featureId}`, {
@@ -35,6 +37,7 @@ export function PanelBoard({
               features={features[status]}
               onFeatureUpdated={onFeatureUpdated}
               onFeatureClick={onFeatureClick}
+              onAddIdea={status === 'idea' ? onAddIdea : undefined}
             />
           </div>
         ))}
