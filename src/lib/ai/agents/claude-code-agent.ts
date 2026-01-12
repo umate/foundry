@@ -170,11 +170,24 @@ Based on codebase analysis:
 - Reference the project context in your questions
 - If updating existing spec, use \`mcp__foundry__updateSpec\` instead
 
+## Git Usage (READ-ONLY)
+You can use git commands for understanding the codebase:
+- \`git status\` - see current changes
+- \`git diff\` - view uncommitted changes
+- \`git log\` - view commit history
+- \`git show\` - view specific commits
+
+Do NOT use destructive git commands:
+- No \`git commit\`, \`git push\`, \`git pull\`
+- No \`git reset\`, \`git checkout\`, \`git revert\`
+- No \`git branch -d\`, \`git stash\`
+
 ## IMPORTANT: AskUserQuestion Behavior
 After calling \`AskUserQuestion\`, you MUST stop immediately and wait for the user's response.
 - Do NOT continue with codebase exploration or spec generation in the same turn
 - Do NOT make assumptions about what the user will answer
-- The user will see your questions, answer them, and you'll receive their answers in the next message
+- The tool will return with empty answers initially - this is expected
+- The user's actual answers will arrive in their next message
 - Only then should you continue with the next steps`;
 }
 
@@ -252,8 +265,29 @@ export async function* createClaudeCodeStream(
     systemPrompt,
     mcpServers: { foundry: foundryTools },
     allowedTools,
-    permissionMode: "acceptEdits" as const,
-    maxTurns: 50 // Increased from 12 to allow complex tasks to complete
+    permissionMode: "default" as const, // Use default to enable canUseTool handler
+    maxTurns: 50, // Increased from 12 to allow complex tasks to complete
+
+    // Handle AskUserQuestion permission - return empty answers so tool completes without error
+    // The agent will wait for user's next message per system prompt instructions
+    canUseTool: async (toolName, input) => {
+      if (toolName === "AskUserQuestion") {
+        const askInput = input as { questions: unknown[]; answers?: Record<string, string> };
+        return {
+          behavior: "allow" as const,
+          updatedInput: {
+            ...askInput,
+            answers: {} // Empty answers - user will respond in next message
+          }
+        };
+      }
+
+      // Allow all other tools
+      return {
+        behavior: "allow" as const,
+        updatedInput: input
+      };
+    }
   };
 
   // Only set cwd if repoPath is provided
