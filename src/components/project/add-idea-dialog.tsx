@@ -131,7 +131,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-mono uppercase tracking-wider flex items-center gap-2">
             <Lightbulb weight="bold" />
@@ -149,9 +149,8 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
               onChange={(e) => setIdeaText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="I want to add a feature that..."
-              rows={5}
               required
-              className="resize-none"
+              className="resize-none min-h-[40vh]"
             />
             <p className="text-xs text-muted-foreground">
               Be as detailed or brief as you like. The AI will help you flesh it out.

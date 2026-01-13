@@ -6,8 +6,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-space-mono);
-  --font-mono: var(--font-space-mono);
+  --font-sans: var(--font-ibm-plex-mono);
+  --font-mono: var(--font-ibm-plex-mono);
   --font-serif: var(--font-ibm-plex-serif);
   --font-sans-serif: var(--font-ibm-plex-sans);
   --color-sidebar-ring: var(--sidebar-ring);
