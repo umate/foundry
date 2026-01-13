@@ -5,7 +5,7 @@ import { z } from 'zod';
 const createProjectSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().optional(),
-  stack: z.string().optional(),
+  repoPath: z.string().optional(),
 });
 
 export async function GET() {

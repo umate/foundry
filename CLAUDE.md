@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - don't start `bun dev` server it's always running
 - run builds only when done with the feature, use `bun run lint` to check for errors once in a while
 - use phosphor icons for icons, not lucide
+- for AI functions use `google/gemini-3-flash` for lighter tasks and `google/gemini-2.5-pro` for heavier
 
 ## Commands
 

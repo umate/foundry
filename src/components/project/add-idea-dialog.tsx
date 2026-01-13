@@ -51,7 +51,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
     setLoadingAction("save");
 
     try {
-      // Create feature without title generation
+      // Step 1: Create feature
       const response = await fetch(`/api/projects/${projectId}/ideas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,7 +65,14 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
         throw new Error("Failed to create feature");
       }
 
-      // Reset form and close dialog immediately
+      const { featureId } = await response.json();
+
+      // Step 2: Generate title/description (wait for it to complete)
+      await fetch(`/api/features/${featureId}/generate-title`, {
+        method: "POST"
+      });
+
+      // Step 3: Reset form and close dialog
       setIdeaText("");
       setLoading(false);
       setLoadingAction(null);
