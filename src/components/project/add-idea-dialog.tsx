@@ -41,7 +41,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.metaKey && ideaText.trim() && !loading) {
       e.preventDefault();
-      handleSaveForLater();
+      handleAddAndRefine();
     }
   };
 
@@ -123,12 +123,6 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
     }
   };
 
-  const handleCancel = () => {
-    setIdeaText("");
-    setError("");
-    onOpenChange(false);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -164,24 +158,21 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleCancel} disabled={loading}>
-              Cancel
-            </Button>
             <Button
               type="button"
-              variant="secondary"
-              onClick={handleAddAndRefine}
+              variant="outline"
+              onClick={handleSaveForLater}
               disabled={loading || !ideaText.trim()}
             >
-              {loadingAction === "refine" ? "Creating..." : "Add & Refine"}
+              {loadingAction === "save" ? "Saving..." : "Save for Later"}
             </Button>
             <Button
               type="button"
-              onClick={handleSaveForLater}
+              onClick={handleAddAndRefine}
               disabled={loading || !ideaText.trim()}
               shortcut={{ key: "enter", meta: true }}
             >
-              {loadingAction === "save" ? "Saving..." : "Save for Later"}
+              {loadingAction === "refine" ? "Creating..." : "Add & Refine"}
             </Button>
           </DialogFooter>
         </form>

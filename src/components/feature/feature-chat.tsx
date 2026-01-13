@@ -108,7 +108,25 @@ function extractMessageContent(msg: DisplayMessage): MessageContent | null {
   return { parts: msg.parts };
 }
 
+// localStorage helpers for thinking mode preference
+const THINKING_MODE_KEY = "foundry:thinkingMode";
+
+function getStoredThinkingMode(projectId: string): boolean {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem(THINKING_MODE_KEY);
+  const map = stored ? JSON.parse(stored) : {};
+  return map[projectId] ?? false;
+}
+
+function setStoredThinkingMode(projectId: string, enabled: boolean) {
+  const stored = localStorage.getItem(THINKING_MODE_KEY);
+  const map = stored ? JSON.parse(stored) : {};
+  map[projectId] = enabled;
+  localStorage.setItem(THINKING_MODE_KEY, JSON.stringify(map));
+}
+
 export function FeatureChat({
+  projectId,
   featureId,
   featureTitle,
   initialIdea,
@@ -127,7 +145,9 @@ export function FeatureChat({
   const [resolvedChanges, setResolvedChanges] = useState<Map<string, "accepted" | "rejected">>(new Map());
   const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [thinkingEnabled, setThinkingEnabled] = useState(false);
+  const [thinkingEnabled, setThinkingEnabled] = useState(() =>
+    getStoredThinkingMode(projectId)
+  );
   const hasSentInitialIdeaRef = useRef(false);
   const hasNotifiedSpecRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -164,6 +184,11 @@ export function FeatureChat({
       savedMessageIdsRef.current.add(msg.id);
     }
   }, [hydratedMessages]);
+
+  // Persist thinking mode preference to localStorage
+  useEffect(() => {
+    setStoredThinkingMode(projectId, thinkingEnabled);
+  }, [projectId, thinkingEnabled]);
 
   // Wrapper to include spec callbacks when sending messages
   const sendMessage = useCallback(
