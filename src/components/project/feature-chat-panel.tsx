@@ -231,12 +231,16 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
               : null
           );
           onFeatureUpdated();
+          // Close the sheet when marking as done
+          if (newStatus === "done") {
+            onClose();
+          }
         }
       } catch (error) {
         console.error("Failed to update status:", error);
       }
     },
-    [featureId, onFeatureUpdated]
+    [featureId, onFeatureUpdated, onClose]
   );
 
   // Handle Start button - validates spec, updates status, sends implementation message

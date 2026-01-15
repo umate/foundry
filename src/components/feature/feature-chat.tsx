@@ -115,7 +115,7 @@ function getStoredThinkingMode(projectId: string): boolean {
   if (typeof window === "undefined") return false;
   const stored = localStorage.getItem(THINKING_MODE_KEY);
   const map = stored ? JSON.parse(stored) : {};
-  return map[projectId] ?? false;
+  return map[projectId] ?? true;
 }
 
 function setStoredThinkingMode(projectId: string, enabled: boolean) {

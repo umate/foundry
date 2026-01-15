@@ -213,7 +213,7 @@ export function StatusPanel({
         {/* Add Idea button - only in idea column */}
         {status === 'idea' && onAddIdea && (
           <div className="p-2">
-            <Button variant="outline" size="sm" onClick={onAddIdea} className="w-full">
+            <Button variant="ghost" size="sm" onClick={onAddIdea} className="w-full">
               <PlusIcon weight="bold" />
               Add Idea
             </Button>
