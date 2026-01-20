@@ -19,6 +19,11 @@ interface StreamOptions {
   onPendingChange?: (markdown: string, changeSummary: string) => void;
 }
 
+interface ChatMessageInput {
+  text: string;
+  images?: Array<{ id: string; filename: string; mimeType: string }>;
+}
+
 interface BackgroundStreamContextValue {
   // Get stream state for a feature
   getStreamState: (featureId: string) => StreamState | undefined;
@@ -27,7 +32,7 @@ interface BackgroundStreamContextValue {
   // Get all streaming feature IDs
   getStreamingFeatureIds: () => string[];
   // Send a message to start/continue a stream
-  sendMessage: (featureId: string, message: { text: string }, options: StreamOptions) => void;
+  sendMessage: (featureId: string, message: ChatMessageInput, options: StreamOptions) => void;
   // Stop a stream
   stopStream: (featureId: string) => void;
   // Clear a stream's state
@@ -94,7 +99,7 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
   // Send a message
   const sendMessage = useCallback((
     featureId: string,
-    message: { text: string },
+    message: ChatMessageInput,
     options: StreamOptions
   ) => {
     // Store feature title for toast
@@ -116,10 +121,21 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
     const currentState = streams.get(featureId);
     const currentMessages = currentState?.messages || [];
 
+    // Build parts array with text and optional images
+    const parts: DisplayMessage["parts"] = [];
+    if (message.text) {
+      parts.push({ type: "text", text: message.text });
+    }
+    if (message.images) {
+      for (const img of message.images) {
+        parts.push({ type: "image", imageId: img.id, filename: img.filename, mimeType: img.mimeType });
+      }
+    }
+
     const userMessage: DisplayMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       role: "user",
-      parts: [{ type: "text", text: message.text }]
+      parts
     };
 
     const messagesWithUser = [...currentMessages, userMessage];
@@ -274,7 +290,7 @@ export function useFeatureStream(featureId: string) {
     status: streamState?.status || "idle",
     error: streamState?.error || null,
     isStreaming: context.isStreaming(featureId),
-    sendMessage: (message: { text: string }, options: StreamOptions) => {
+    sendMessage: (message: ChatMessageInput, options: StreamOptions) => {
       context.sendMessage(featureId, message, options);
     },
     stop: () => context.stopStream(featureId),

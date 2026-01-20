@@ -103,16 +103,27 @@ export async function POST(
 
   // Parse request body
   const body = await req.json();
-  const messages: ChatMessage[] = body.messages || [];
+  const rawMessages: Array<{
+    role: "user" | "assistant";
+    content: string;
+    images?: Array<{ id: string; filename: string; mimeType: string }>;
+  }> = body.messages || [];
   const currentSpecMarkdown: string | null = body.currentSpecMarkdown ?? null;
   const thinkingEnabled: boolean = body.thinkingEnabled ?? false;
 
-  if (!Array.isArray(messages)) {
+  if (!Array.isArray(rawMessages)) {
     return new Response(JSON.stringify({ error: "Messages array required" }), {
       status: 400,
       headers: { "Content-Type": "application/json" }
     });
   }
+
+  // Convert to ChatMessage format (which now supports images)
+  const messages: ChatMessage[] = rawMessages.map((m) => ({
+    role: m.role,
+    content: m.content,
+    images: m.images
+  }));
 
   // Create SSE stream
   const encoder = new TextEncoder();
@@ -137,6 +148,11 @@ export async function POST(
             description: project.description,
             stack: project.stack,
             repoPath: project.repoPath
+          },
+          {
+            title: feature.title,
+            description: feature.description,
+            initialIdea: feature.initialIdea
           },
           currentSpecMarkdown,
           messages,

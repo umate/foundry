@@ -3,11 +3,51 @@ import { projectRepository } from '@/db/repositories/project.repository';
 import { featureRepository } from '@/db/repositories/feature.repository';
 import { breakdownIdea } from '@/lib/ai/idea-breakdown';
 import { z } from 'zod';
+import { getMimeTypeFromExtension } from '@/lib/image-utils';
+import { IMAGES_DIR } from '@/lib/image-utils.server';
+import { readdir } from 'fs/promises';
+import type { FeatureImage } from '@/db/schema';
 
 const ideaSchema = z.object({
   ideaText: z.string().min(1),
   createOnly: z.boolean().optional(),
+  imageIds: z.array(z.string()).optional(),
 });
+
+// Helper to build FeatureImage array from image IDs
+async function buildFeatureImages(imageIds: string[]): Promise<FeatureImage[]> {
+  if (imageIds.length === 0) return [];
+
+  // Read the images directory to find matching files
+  let files: string[];
+  try {
+    files = await readdir(IMAGES_DIR);
+  } catch {
+    return []; // Directory doesn't exist yet
+  }
+
+  const featureImages: FeatureImage[] = [];
+  const now = new Date().toISOString();
+
+  for (const imageId of imageIds) {
+    // Find file that starts with this imageId
+    const filename = files.find(f => f.startsWith(imageId + '.'));
+    if (filename) {
+      const ext = filename.split('.').pop() || '';
+      const mimeType = getMimeTypeFromExtension(ext);
+      if (mimeType) {
+        featureImages.push({
+          id: imageId,
+          filename,
+          mimeType,
+          createdAt: now,
+        });
+      }
+    }
+  }
+
+  return featureImages;
+}
 
 export async function POST(
   request: NextRequest,
@@ -27,7 +67,7 @@ export async function POST(
     }
 
     // Handle ideaText flow
-    const { ideaText, createOnly } = ideaSchema.parse(body);
+    const { ideaText, createOnly, imageIds } = ideaSchema.parse(body);
 
     // If createOnly flag is set, just create a minimal feature and return
     // This is used by the new AddIdeaDialog to redirect to the feature page
@@ -38,6 +78,9 @@ export async function POST(
       // Get max sort order for idea status to place new feature at top
       const maxSortOrder = await featureRepository.getMaxSortOrderForStatus(projectId, 'idea');
 
+      // Build feature images from uploaded image IDs
+      const images = imageIds ? await buildFeatureImages(imageIds) : [];
+
       const feature = await featureRepository.create({
         projectId,
         title,
@@ -47,6 +90,7 @@ export async function POST(
         sortOrder: maxSortOrder + 1000,
         requestCount: 0,
         initialIdea: ideaText,
+        images,
       });
 
       return NextResponse.json({

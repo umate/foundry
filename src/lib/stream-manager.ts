@@ -73,14 +73,25 @@ export async function startStream(
   // Add user message is already done by context, just start streaming
   callbacks.onStatusChange("streaming");
 
-  // Prepare messages for API
-  const apiMessages = messages.map((m) => ({
-    role: m.role,
-    content: m.parts
+  // Prepare messages for API - include images if present
+  const apiMessages = messages.map((m) => {
+    // Extract text content
+    const textContent = m.parts
       .filter((p): p is { type: "text"; text: string } => p.type === "text")
       .map((p) => p.text)
-      .join("\n")
-  }));
+      .join("\n");
+
+    // Extract images
+    const images = m.parts
+      .filter((p): p is { type: "image"; imageId: string; filename: string; mimeType: string } => p.type === "image")
+      .map((p) => ({ id: p.imageId, filename: p.filename, mimeType: p.mimeType }));
+
+    return {
+      role: m.role,
+      content: textContent,
+      ...(images.length > 0 && { images })
+    };
+  });
 
   try {
     const response = await fetch(`/api/features/${featureId}/agent`, {

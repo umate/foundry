@@ -12,6 +12,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Lightbulb } from "@phosphor-icons/react/dist/ssr";
+import {
+  ImageDropzone,
+  type PendingImage,
+  uploadImages,
+  ImageUploadingIndicator
+} from "@/components/ui/image-upload";
 
 interface AddIdeaDialogProps {
   open: boolean;
@@ -27,6 +33,8 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
   const [loading, setLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<"save" | "refine" | null>(null);
   const [error, setError] = useState("");
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -35,7 +43,12 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
       setLoading(false);
       setLoadingAction(null);
       setError("");
+      // Clean up pending image URLs
+      pendingImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
+      setPendingImages([]);
+      setIsUploadingImages(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -51,13 +64,23 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
     setLoadingAction("save");
 
     try {
-      // Step 1: Create feature
+      // Step 1: Upload images if any
+      let imageIds: string[] = [];
+      if (pendingImages.length > 0) {
+        setIsUploadingImages(true);
+        const uploadedImages = await uploadImages(pendingImages);
+        imageIds = uploadedImages.map(img => img.id);
+        setIsUploadingImages(false);
+      }
+
+      // Step 2: Create feature with image IDs
       const response = await fetch(`/api/projects/${projectId}/ideas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ideaText: ideaText.trim(),
-          createOnly: true
+          createOnly: true,
+          imageIds
         })
       });
 
@@ -67,13 +90,15 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
 
       const { featureId } = await response.json();
 
-      // Step 2: Generate title/description (wait for it to complete)
+      // Step 3: Generate title/description (wait for it to complete)
       await fetch(`/api/features/${featureId}/generate-title`, {
         method: "POST"
       });
 
-      // Step 3: Reset form and close dialog
+      // Step 4: Reset form and close dialog
       setIdeaText("");
+      pendingImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
+      setPendingImages([]);
       setLoading(false);
       setLoadingAction(null);
       onOpenChange(false);
@@ -84,6 +109,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
       setError(err instanceof Error ? err.message : "Failed to create feature");
       setLoading(false);
       setLoadingAction(null);
+      setIsUploadingImages(false);
     }
   };
 
@@ -93,13 +119,23 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
     setLoadingAction("refine");
 
     try {
-      // Step 1: Create feature
+      // Step 1: Upload images if any
+      let imageIds: string[] = [];
+      if (pendingImages.length > 0) {
+        setIsUploadingImages(true);
+        const uploadedImages = await uploadImages(pendingImages);
+        imageIds = uploadedImages.map(img => img.id);
+        setIsUploadingImages(false);
+      }
+
+      // Step 2: Create feature with image IDs
       const response = await fetch(`/api/projects/${projectId}/ideas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ideaText: ideaText.trim(),
-          createOnly: true
+          createOnly: true,
+          imageIds
         })
       });
 
@@ -109,24 +145,27 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
 
       const { featureId } = await response.json();
 
-      // Step 2: Generate title/description
+      // Step 3: Generate title/description
       await fetch(`/api/features/${featureId}/generate-title`, {
         method: "POST"
       });
 
-      // Step 3: Reset form and close dialog
+      // Step 4: Reset form and close dialog
       setIdeaText("");
+      pendingImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
+      setPendingImages([]);
       setLoading(false);
       setLoadingAction(null);
       onOpenChange(false);
 
-      // Step 4: Notify parent to reload and open sidebar
+      // Step 5: Notify parent to reload and open sidebar
       onSuccess?.();
       onFeatureCreated?.(featureId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create feature");
       setLoading(false);
       setLoadingAction(null);
+      setIsUploadingImages(false);
     }
   };
 
@@ -145,18 +184,28 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
 
         <form ref={formRef} className="space-y-4">
           <div className="space-y-2">
-            <Textarea
-              value={ideaText}
-              onChange={(e) => setIdeaText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="I want to add a feature that..."
-              required
-              className="resize-none min-h-[40vh]"
-            />
+            <ImageDropzone
+              images={pendingImages}
+              onImagesChange={setPendingImages}
+              disabled={loading}
+              maxImages={5}
+            >
+              <Textarea
+                value={ideaText}
+                onChange={(e) => setIdeaText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="I want to add a feature that..."
+                required
+                className="resize-none min-h-[40vh]"
+              />
+            </ImageDropzone>
             <p className="text-xs text-muted-foreground">
               Be as detailed or brief as you like. The AI will help you flesh it out.
+              Drag & drop or paste images to include visual context.
             </p>
           </div>
+
+          {isUploadingImages && <ImageUploadingIndicator />}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-3">

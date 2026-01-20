@@ -24,6 +24,7 @@ export interface TodoItem {
 
 export type MessagePart =
   | { type: "text"; text: string }
+  | { type: "image"; imageId: string; filename: string; mimeType: string }
   | { type: "activity"; message: string }
   | { type: "tool-generateSpec"; markdown: string }
   | { type: "tool-updateSpec"; markdown: string; changeSummary: string }

@@ -3,6 +3,7 @@ import type { SDKMessage, SDKAssistantMessage, SDKResultMessage } from "@anthrop
 import { z } from "zod";
 import { readFile } from "fs/promises";
 import path from "path";
+import { getImagePath } from "@/lib/image-utils.server";
 
 // --- CLAUDE.md Reader ---
 
@@ -25,9 +26,22 @@ export interface ProjectContext {
   repoPath: string | null;
 }
 
+export interface FeatureContext {
+  title: string;
+  description: string | null;
+  initialIdea: string | null;
+}
+
+export interface ChatImage {
+  id: string;
+  filename: string;
+  mimeType: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  images?: ChatImage[];
 }
 
 // --- MCP Tools ---
@@ -69,6 +83,7 @@ function createFoundryTools() {
 
 function buildSystemPrompt(
   project: ProjectContext,
+  feature: FeatureContext,
   currentSpecMarkdown: string | null,
   claudeMdContent: string | null
 ): string {
@@ -93,6 +108,14 @@ ${project.description || "No description provided."}
 
 You are helping refine features for THIS specific product. Your questions should reference the product's existing capabilities and tech constraints described above.`;
 
+  const featureContext = `
+
+## FEATURE CONTEXT (Always remember this)
+
+**Feature Title:** ${feature.title}
+${feature.description ? `**Description:** ${feature.description}` : ""}
+${feature.initialIdea ? `**Original Idea:** ${feature.initialIdea}` : ""}`;
+
   const specContext = currentSpecMarkdown
     ? `
 
@@ -103,7 +126,7 @@ The user has an existing spec. When they ask for changes, use the \`mcp__foundry
 ${currentSpecMarkdown}`
     : "";
 
-  return `${projectContext}${specContext}
+  return `${projectContext}${featureContext}${specContext}
 
 You are a Product Thinking Partner with access to this project's codebase. Your job is to help the user refine their feature idea through thoughtful questions BEFORE generating a spec.
 
@@ -193,6 +216,13 @@ After calling \`AskUserQuestion\`, you MUST stop immediately and wait for the us
 
 // --- Message Formatting ---
 
+// Rough token estimation: ~4 chars per token (conservative)
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+const MAX_CONVERSATION_TOKENS = 50000; // ~50k tokens for conversation history
+
 function formatMessagesAsPrompt(messages: ChatMessage[]): string {
   if (messages.length === 0) {
     return "";
@@ -206,17 +236,74 @@ function formatMessagesAsPrompt(messages: ChatMessage[]): string {
     return lastMessage.content;
   }
 
-  // Include conversation history as context
-  const history = messages
-    .slice(0, -1)
-    .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
-    .join("\n\n");
+  // Sliding window: build history from newest, stop at token budget
+  const historyMessages: string[] = [];
+  let tokenCount = estimateTokens(lastMessage.content);
+
+  // Iterate backwards (newest to oldest), skip the last message
+  for (let i = messages.length - 2; i >= 0; i--) {
+    const m = messages[i];
+    const formatted = `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`;
+    const msgTokens = estimateTokens(formatted);
+
+    if (tokenCount + msgTokens > MAX_CONVERSATION_TOKENS) {
+      break; // Stop adding older messages
+    }
+
+    historyMessages.unshift(formatted); // Add to front (maintain order)
+    tokenCount += msgTokens;
+  }
+
+  if (historyMessages.length === 0) {
+    return lastMessage.content;
+  }
 
   return `Previous conversation:
-${history}
+${historyMessages.join("\n\n")}
 
 Current request:
 ${lastMessage.content}`;
+}
+
+// --- Image Loading ---
+
+interface ImageContent {
+  type: "image";
+  source: {
+    type: "base64";
+    media_type: string;
+    data: string;
+  };
+}
+
+async function loadImageAsBase64(filename: string, mimeType: string): Promise<ImageContent | null> {
+  try {
+    const imagePath = getImagePath(filename);
+    const buffer = await readFile(imagePath);
+    const base64 = buffer.toString("base64");
+    return {
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: mimeType,
+        data: base64
+      }
+    };
+  } catch (error) {
+    console.error(`Failed to load image ${filename}:`, error);
+    return null;
+  }
+}
+
+async function loadImagesForMessage(images: ChatImage[]): Promise<ImageContent[]> {
+  const loaded: ImageContent[] = [];
+  for (const img of images) {
+    const content = await loadImageAsBase64(img.filename, img.mimeType);
+    if (content) {
+      loaded.push(content);
+    }
+  }
+  return loaded;
 }
 
 // --- Exported Types for Message Handling ---
@@ -241,14 +328,14 @@ export function isResultMessage(msg: SDKMessage): msg is SDKResultMessage {
  */
 export async function* createClaudeCodeStream(
   project: ProjectContext,
+  feature: FeatureContext,
   currentSpecMarkdown: string | null,
   messages: ChatMessage[],
   thinkingEnabled: boolean = false
 ): AsyncGenerator<SDKMessage> {
   const foundryTools = createFoundryTools();
   const claudeMdContent = await readClaudeMd(project.repoPath);
-  const systemPrompt = buildSystemPrompt(project, currentSpecMarkdown, claudeMdContent);
-  const prompt = formatMessagesAsPrompt(messages);
+  const systemPrompt = buildSystemPrompt(project, feature, currentSpecMarkdown, claudeMdContent);
 
   // Configure allowed tools
   const allowedTools = [
@@ -297,10 +384,53 @@ export async function* createClaudeCodeStream(
     queryOptions.cwd = project.repoPath;
   }
 
-  const queryResult = query({
-    prompt,
-    options: queryOptions
-  });
+  // Check if the last message has images
+  const lastMessage = messages[messages.length - 1];
+  const hasImages = lastMessage?.images && lastMessage.images.length > 0;
+
+  let queryResult;
+
+  if (hasImages && lastMessage.images) {
+    // Load images and create an async iterable for streaming input mode
+    const imageContents = await loadImagesForMessage(lastMessage.images);
+    const prompt = formatMessagesAsPrompt(messages);
+
+    // Create content array with text and images
+    const content: Array<{ type: "text"; text: string } | ImageContent> = [];
+
+    // Add text content first
+    if (prompt) {
+      content.push({ type: "text", text: prompt });
+    }
+
+    // Add images
+    content.push(...imageContents);
+
+    // Create async iterable that yields a single user message with images
+    async function* createMessageStream() {
+      yield {
+        type: "user" as const,
+        session_id: "",
+        message: {
+          role: "user" as const,
+          content
+        },
+        parent_tool_use_id: null
+      };
+    }
+
+    queryResult = query({
+      prompt: createMessageStream(),
+      options: queryOptions
+    });
+  } else {
+    // No images - use simple string prompt
+    const prompt = formatMessagesAsPrompt(messages);
+    queryResult = query({
+      prompt,
+      options: queryOptions
+    });
+  }
 
   // Yield messages as they stream
   for await (const message of queryResult) {

@@ -6,7 +6,7 @@ import type { DisplayMessage, ClarificationQuestion, MessagePart } from "@/lib/h
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon, FloppyDiskIcon, PencilIcon, WarningIcon } from "@phosphor-icons/react";
+import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon, FloppyDiskIcon, PencilIcon, WarningIcon, ImageIcon, XIcon } from "@phosphor-icons/react";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import {
@@ -27,6 +27,8 @@ import { PendingChangeCard } from "./pending-change-card";
 import { ClarificationCard } from "./clarification-card";
 import { BashResultCard } from "./bash-result-card";
 import { TodoListCard } from "./todo-list-card";
+import type { PendingImage } from "@/components/ui/image-upload";
+import { uploadImages, validateImageFile, type UploadedImage } from "@/lib/image-utils";
 
 // DB message content - stores full parts array (mirrors DisplayMessage.parts)
 type MessageContent = {
@@ -141,6 +143,9 @@ export function FeatureChat({
   onSessionReset
 }: FeatureChatProps) {
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   // Track resolved updateSpec tool calls: key is message-part key, value is resolution status
   const [resolvedChanges, setResolvedChanges] = useState<Map<string, "accepted" | "rejected">>(new Map());
   const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
@@ -148,6 +153,11 @@ export function FeatureChat({
   const [thinkingEnabled, setThinkingEnabled] = useState(() =>
     getStoredThinkingMode(projectId)
   );
+  // Progressive message loading
+  const MESSAGES_PER_PAGE = 5;
+  const [visibleCount, setVisibleCount] = useState(MESSAGES_PER_PAGE);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const hasSentInitialIdeaRef = useRef(false);
   const hasNotifiedSpecRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -192,8 +202,15 @@ export function FeatureChat({
 
   // Wrapper to include spec callbacks when sending messages
   const sendMessage = useCallback(
-    (content: { text: string }) => {
-      contextSendMessage(content, {
+    (content: { text: string; images?: UploadedImage[] }) => {
+      // Convert UploadedImage to the format expected by the context
+      const images = content.images?.map((img) => ({
+        id: img.id,
+        filename: img.filename,
+        mimeType: img.mimeType
+      }));
+
+      contextSendMessage({ text: content.text, images }, {
         currentSpecMarkdown,
         featureTitle,
         thinkingEnabled,
@@ -217,6 +234,16 @@ export function FeatureChat({
   const messages: DisplayMessage[] = useMemo(() => {
     return contextMessages.length > 0 ? contextMessages : hydratedMessages;
   }, [contextMessages, hydratedMessages]);
+
+  // Progressive loading: only show last N messages
+  const visibleMessages = useMemo(() => {
+    if (messages.length <= visibleCount) {
+      return messages;
+    }
+    return messages.slice(-visibleCount);
+  }, [messages, visibleCount]);
+
+  const hasMoreMessages = messages.length > visibleCount;
 
   const isLoading = status === "streaming";
 
@@ -321,6 +348,59 @@ export function FeatureChat({
     }
   }, [hydratedMessages, onSpecGenerated, hasSavedSpec]);
 
+  // Image handling
+  const handleFilesSelected = useCallback((files: File[]) => {
+    setImageError(null);
+    const newImages: PendingImage[] = [];
+
+    for (const file of files) {
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        setImageError(validation.error || "Invalid file");
+        continue;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      newImages.push({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl
+      });
+    }
+
+    setPendingImages((prev) => [...prev, ...newImages]);
+  }, []);
+
+  const handleRemoveImage = useCallback((id: string) => {
+    setPendingImages((prev) => {
+      const updated = prev.filter((img) => img.id !== id);
+      // Revoke URL for removed image
+      const removed = prev.find((img) => img.id === id);
+      if (removed) {
+        URL.revokeObjectURL(removed.previewUrl);
+      }
+      return updated;
+    });
+  }, []);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      handleFilesSelected(imageFiles);
+    }
+  }, [handleFilesSelected]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Escape cancels generation
     if (e.key === "Escape" && isLoading) {
@@ -330,21 +410,61 @@ export function FeatureChat({
       return;
     }
     // Enter sends, Shift+Enter for newline
-    if (e.key === "Enter" && !e.shiftKey && !isLoading && input.trim()) {
+    if (e.key === "Enter" && !e.shiftKey && !isLoading && (input.trim() || pendingImages.length > 0)) {
       e.preventDefault();
-      saveMessage("user", { parts: [{ type: "text", text: input }] });
-      sendMessage({ text: input });
-      setInput("");
+      handleSendWithImages();
     }
+  };
+
+  const handleSendWithImages = async () => {
+    if ((!input.trim() && pendingImages.length === 0) || isLoading || isUploadingImages) return;
+
+    const textContent = input.trim();
+    const imagesToUpload = [...pendingImages];
+
+    // Clear input and images immediately for responsiveness
+    setInput("");
+    setPendingImages([]);
+
+    // Build message parts for saving to DB
+    const parts: MessagePart[] = [];
+    if (textContent) {
+      parts.push({ type: "text", text: textContent });
+    }
+
+    let uploadedImages: UploadedImage[] = [];
+
+    if (imagesToUpload.length > 0) {
+      setIsUploadingImages(true);
+      try {
+        uploadedImages = await uploadImages(imagesToUpload.map((img) => img.file));
+
+        // Add image parts
+        for (const img of uploadedImages) {
+          parts.push({ type: "image", imageId: img.id, filename: img.filename, mimeType: img.mimeType });
+        }
+
+        // Revoke preview URLs
+        imagesToUpload.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+      } catch (err) {
+        setImageError(err instanceof Error ? err.message : "Failed to upload images");
+        // Restore images on error
+        setPendingImages(imagesToUpload);
+        setInput(textContent);
+        setIsUploadingImages(false);
+        return;
+      }
+      setIsUploadingImages(false);
+    }
+
+    // Save and send message
+    saveMessage("user", { parts });
+    sendMessage({ text: textContent, images: uploadedImages });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && !isLoading) {
-      saveMessage("user", { parts: [{ type: "text", text: input }] });
-      sendMessage({ text: input });
-      setInput("");
-    }
+    handleSendWithImages();
   };
 
   const handleSpecAction = useCallback(() => {
@@ -379,6 +499,21 @@ export function FeatureChat({
     [saveMessage, sendMessage]
   );
 
+  // Load more messages when button clicked
+  const handleLoadMoreMessages = useCallback(() => {
+    if (!hasMoreMessages) return;
+    const container = scrollContainerRef.current;
+    const prevScrollHeight = container?.scrollHeight ?? 0;
+    setVisibleCount(prev => Math.min(prev + MESSAGES_PER_PAGE, messages.length));
+    // Restore scroll position after state update
+    requestAnimationFrame(() => {
+      if (container) {
+        const newScrollHeight = container.scrollHeight;
+        container.scrollTop = newScrollHeight - prevScrollHeight;
+      }
+    });
+  }, [hasMoreMessages, messages.length]);
+
   const handleResetSession = async () => {
     try {
       const response = await fetch(`/api/features/${featureId}/messages`, {
@@ -391,6 +526,7 @@ export function FeatureChat({
         hasNotifiedSpecRef.current = false;
         // Clear local state
         setResolvedChanges(new Map());
+        setVisibleCount(MESSAGES_PER_PAGE);
         clearMessages();
         // Notify parent to remount this component with fresh state
         onSessionReset?.();
@@ -404,7 +540,22 @@ export function FeatureChat({
   return (
     <div className="flex flex-col h-full bg-card">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+      >
+        {/* Load more button */}
+        {hasMoreMessages && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={handleLoadMoreMessages}
+          >
+            Load {messages.length - visibleCount} earlier messages
+          </Button>
+        )}
+
         {messages.length === 0 && !initialIdea && (
           <Empty className="h-full border-0">
             <EmptyHeader>
@@ -417,7 +568,7 @@ export function FeatureChat({
           </Empty>
         )}
 
-        {messages.map((message) => {
+        {visibleMessages.map((message) => {
           // Deduplicate parts by content
           const seenTexts = new Set<string>();
           const seenToolCalls = new Set<string>();
@@ -455,6 +606,22 @@ export function FeatureChat({
                         <div className="text-sm markdown-content max-w-none">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
                         </div>
+                      </div>
+                    );
+                  }
+
+                  if (part.type === "image" && part.filename) {
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className={message.role === "user" ? "rounded-md overflow-hidden bg-background" : ""}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`/api/images/${part.filename}`}
+                          alt="Attached image"
+                          className="max-w-full max-h-48 rounded-sm object-contain"
+                        />
                       </div>
                     );
                   }
@@ -710,30 +877,93 @@ export function FeatureChat({
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <div className="relative rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring">
-              {/* Textarea - padding-bottom creates space for buttons */}
-              <Textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type your response..."
-                className="min-h-[80px] resize-none border-0 focus-visible:ring-0 pb-10"
-                rows={3}
-              />
+              <div className="relative rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring">
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) handleFilesSelected(files);
+                    e.target.value = "";
+                  }}
+                />
 
-              {/* Bottom toolbar - positioned inside container */}
-              <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-                {/* Left: Thinking toggle */}
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <Switch
-                    checked={thinkingEnabled}
-                    onCheckedChange={setThinkingEnabled}
-                    disabled={isLoading}
-                    className="scale-75"
-                  />
-                  <span className="text-xs font-mono text-muted-foreground">Thinking</span>
-                </label>
+                {/* Image error display */}
+                {imageError && (
+                  <div className="px-3 py-2 text-xs text-destructive bg-destructive/10 border-b border-destructive/20">
+                    {imageError}
+                    <button
+                      type="button"
+                      onClick={() => setImageError(null)}
+                      className="ml-2 underline hover:no-underline"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+
+                {/* Image previews */}
+                {pendingImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-2 border-b border-border">
+                    {pendingImages.map((img) => (
+                      <div key={img.id} className="relative group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img.previewUrl}
+                          alt="Pending upload"
+                          className="h-16 w-16 object-cover rounded-sm border border-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(img.id)}
+                          className="absolute -top-1.5 -right-1.5 p-0.5 bg-destructive text-destructive-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <XIcon weight="bold" className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Textarea - padding-bottom creates space for buttons */}
+                <Textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  placeholder="Type your response... (paste or drag images)"
+                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0 pb-10"
+                  rows={3}
+                />
+
+                {/* Bottom toolbar - positioned inside container */}
+                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                  {/* Left: Thinking toggle + Image upload */}
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <Switch
+                        checked={thinkingEnabled}
+                        onCheckedChange={setThinkingEnabled}
+                        disabled={isLoading}
+                        className="scale-75"
+                      />
+                      <span className="text-xs font-mono text-muted-foreground">Thinking</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || isUploadingImages}
+                      className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                      title="Attach images"
+                    >
+                      <ImageIcon weight="bold" className="size-3.5" />
+                    </button>
+                  </div>
 
                 {/* Right: Reset, Spec action, and Send/Stop */}
                 <div className="flex items-center gap-2">
@@ -777,13 +1007,14 @@ export function FeatureChat({
                     {hasSavedSpec ? "Update Spec" : "Generate Spec"}
                   </button>
 
-                  {isLoading ? (
+                  {isLoading || isUploadingImages ? (
                     <Button
                       type="button"
                       variant="destructive"
                       size="icon-sm"
                       onClick={handleStop}
-                      title="Stop"
+                      disabled={isUploadingImages}
+                      title={isUploadingImages ? "Uploading..." : "Stop"}
                       className="size-7"
                     >
                       <StopIcon weight="bold" className="size-4" />
@@ -791,9 +1022,9 @@ export function FeatureChat({
                   ) : (
                     <Button
                       type="submit"
-                      variant={input.trim() ? "secondary" : "default"}
+                      variant={(input.trim() || pendingImages.length > 0) ? "secondary" : "default"}
                       size="icon-sm"
-                      disabled={!input.trim()}
+                      disabled={!input.trim() && pendingImages.length === 0}
                       title="Send (Enter)"
                       className="size-7"
                     >
@@ -802,7 +1033,7 @@ export function FeatureChat({
                   )}
                 </div>
               </div>
-            </div>
+              </div>
           </form>
         )}
       </div>

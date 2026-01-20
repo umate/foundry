@@ -27,6 +27,14 @@ export interface SubTask {
   order: number;
 }
 
+// FeatureImage type for images attached to features
+export interface FeatureImage {
+  id: string;        // Short unique ID (matches filename without extension)
+  filename: string;  // Full filename with extension (e.g., "a1b2c3d4.png")
+  mimeType: string;  // "image/png", "image/jpeg", etc.
+  createdAt: string; // ISO timestamp
+}
+
 export const features = pgTable('features', {
   id: uuid('id').defaultRandom().primaryKey(),
   projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
@@ -41,6 +49,7 @@ export const features = pgTable('features', {
   initialIdea: text('initial_idea'), // The raw idea text user submitted
   summary: text('summary'), // AI-generated 1-2 sentence summary for card display
   subtasks: jsonb('subtasks').$type<SubTask[]>().default([]), // Checklist items
+  images: jsonb('images').$type<FeatureImage[]>().default([]), // Attached images
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
