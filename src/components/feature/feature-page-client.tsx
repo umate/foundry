@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { EraserIcon } from '@phosphor-icons/react';
 import type { Feature, FeatureMessage, Project } from '@/db/schema';
 import type { MDXEditorMethods } from '@mdxeditor/editor';
 
@@ -42,6 +43,8 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
   const [addIdeaOpen, setAddIdeaOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteSpecDialog, setShowDeleteSpecDialog] = useState(false);
+  const [isDeletingSpec, setIsDeletingSpec] = useState(false);
 
   // Diff mode state
   const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
@@ -133,6 +136,34 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
     }
   }, [feature.id, project.id, router]);
 
+  // Handle spec deletion (clears specMarkdown and wireframe)
+  const handleDeleteSpec = useCallback(async () => {
+    setIsDeletingSpec(true);
+    try {
+      const response = await fetch(`/api/features/${feature.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ specMarkdown: null, wireframe: null }),
+      });
+
+      if (response.ok) {
+        // Clear local state
+        setSpecContent('');
+        setWireframeContent('');
+        setIsLocked(true);
+        setActiveTab('spec');
+        // Clear any pending changes
+        setProposedMarkdown(null);
+        setOriginalMarkdown(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete spec:', error);
+    } finally {
+      setIsDeletingSpec(false);
+      setShowDeleteSpecDialog(false);
+    }
+  }, [feature.id]);
+
   // Handle editor content changes
   const handleContentChange = useCallback((markdown: string) => {
     setSpecContent(markdown);
@@ -203,11 +234,22 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
           {/* Only show tabs if wireframe exists */}
           {wireframeContent ? (
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'spec' | 'wireframe')} className="flex flex-col h-full gap-0">
-              <div className="border-b border-border px-4 py-2">
+              <div className="border-b border-border px-4 py-2 flex items-center justify-between">
                 <TabsList>
                   <TabsTrigger value="spec">Spec</TabsTrigger>
                   <TabsTrigger value="wireframe">Wireframe</TabsTrigger>
                 </TabsList>
+                {specContent && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowDeleteSpecDialog(true)}
+                    className="size-8 text-muted-foreground hover:text-destructive"
+                    title="Clear spec"
+                  >
+                    <EraserIcon weight="bold" className="size-4" />
+                  </Button>
+                )}
               </div>
               <TabsContent value="spec" className="flex-1 overflow-y-auto m-0">
                 <SpecEditor
@@ -232,23 +274,40 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
               </TabsContent>
             </Tabs>
           ) : (
-            <div className="flex-1 overflow-y-auto">
-              <SpecEditor
-                ref={editorRef}
-                content={proposedMarkdown ?? specContent}
-                onChange={handleContentChange}
-                isLocked={isLocked}
-                placeholder="The AI will generate a spec here based on your conversation..."
-                saveStatus={saveStatus}
-                diffMarkdown={originalMarkdown ?? undefined}
-                viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
-                projectContext={{
-                  name: project.name,
-                  description: project.description,
-                  stack: project.stack,
-                }}
-                featureTitle={feature.title}
-              />
+            <div className="flex flex-col h-full">
+              {/* Header with delete button when spec exists */}
+              {specContent && (
+                <div className="border-b border-border px-4 py-2 flex items-center justify-between">
+                  <span className="font-mono text-sm font-semibold uppercase tracking-wider">Spec</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowDeleteSpecDialog(true)}
+                    className="size-8 text-muted-foreground hover:text-destructive"
+                    title="Clear spec"
+                  >
+                    <EraserIcon weight="bold" className="size-4" />
+                  </Button>
+                </div>
+              )}
+              <div className="flex-1 overflow-y-auto">
+                <SpecEditor
+                  ref={editorRef}
+                  content={proposedMarkdown ?? specContent}
+                  onChange={handleContentChange}
+                  isLocked={isLocked}
+                  placeholder="The AI will generate a spec here based on your conversation..."
+                  saveStatus={saveStatus}
+                  diffMarkdown={originalMarkdown ?? undefined}
+                  viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
+                  projectContext={{
+                    name: project.name,
+                    description: project.description,
+                    stack: project.stack,
+                  }}
+                  featureTitle={feature.title}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -295,6 +354,27 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
             <AlertDialogAction asChild>
               <Button variant="destructive" onClick={handleDeleteFeature} disabled={isDeleting}>
                 {isDeleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteSpecDialog} onOpenChange={setShowDeleteSpecDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Specification?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear the spec and wireframe for this feature. Your chat history will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="outline" disabled={isDeletingSpec}>Cancel</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button variant="destructive" onClick={handleDeleteSpec} disabled={isDeletingSpec}>
+                {isDeletingSpec ? 'Clearing...' : 'Clear'}
               </Button>
             </AlertDialogAction>
           </AlertDialogFooter>

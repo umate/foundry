@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "@phosphor-icons/react";
+import { X, Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,8 @@ interface CollapsibleSideBarProps {
   hasContent: boolean;
   children: React.ReactNode;
   expandedWidth?: string;
+  /** Optional delete handler - shows trash icon in header when provided */
+  onDelete?: () => void;
 }
 
 export function CollapsibleSideBar({
@@ -19,7 +21,8 @@ export function CollapsibleSideBar({
   onToggle,
   hasContent,
   children,
-  expandedWidth = "w-[calc(100vw-600px)] max-w-[50vw]"
+  expandedWidth = "w-[calc(100vw-600px)] max-w-[50vw]",
+  onDelete
 }: CollapsibleSideBarProps) {
   if (!hasContent) return null;
 
@@ -28,9 +31,22 @@ export function CollapsibleSideBar({
       <div className={cn("bg-card border-r border-border flex flex-col", expandedWidth)}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
           <h2 className="font-mono text-sm font-bold uppercase tracking-wider">{label}</h2>
-          <Button variant="ghost" size="icon" onClick={onToggle} className="size-8">
-            <X weight="bold" className="size-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                className="size-8 text-muted-foreground hover:text-destructive"
+                title={`Delete ${label.toLowerCase()}`}
+              >
+                <Trash weight="bold" className="size-4" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={onToggle} className="size-8">
+              <X weight="bold" className="size-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex-1 overflow-auto">{children}</div>
       </div>

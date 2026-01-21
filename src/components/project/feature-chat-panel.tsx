@@ -77,6 +77,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
 
   // Delete dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeleteSpecDialog, setShowDeleteSpecDialog] = useState(false);
+  const [isDeletingSpec, setIsDeletingSpec] = useState(false);
 
   const isOpen = featureId !== null;
 
@@ -334,6 +336,36 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     }
   }, [featureId, onClose, onFeatureUpdated]);
 
+  // Handle spec deletion (clear spec and wireframe)
+  const handleDeleteSpec = useCallback(async () => {
+    if (!featureId) return;
+
+    setIsDeletingSpec(true);
+    try {
+      const response = await fetch(`/api/features/${featureId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ specMarkdown: null, wireframe: null })
+      });
+
+      if (response.ok) {
+        // Clear local state
+        setSpecContent("");
+        setWireframeContent("");
+        setProposedMarkdown(null);
+        setOriginalMarkdown(null);
+        setFeature((prev) => prev ? { ...prev, specMarkdown: null, wireframe: null } : null);
+        setShowDeleteSpecDialog(false);
+        setOpenPanel(null); // Close the spec panel
+        onFeatureUpdated();
+      }
+    } catch (error) {
+      console.error("Failed to delete spec:", error);
+    } finally {
+      setIsDeletingSpec(false);
+    }
+  }, [featureId, onFeatureUpdated]);
+
   // Save spec
   const saveSpec = useCallback(async () => {
     if (!featureId || !specContent.trim()) return;
@@ -420,6 +452,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           isExpanded={openPanel === 'spec'}
           onToggle={() => setOpenPanel(openPanel === 'spec' ? null : 'spec')}
           hasContent={hasSpec}
+          onDelete={() => setShowDeleteSpecDialog(true)}
         >
           <SpecEditor
             ref={editorRef}
@@ -618,6 +651,33 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           )}
         </div>
       </div>
+
+      {/* Delete Spec Confirmation Dialog */}
+      <AlertDialog open={showDeleteSpecDialog} onOpenChange={setShowDeleteSpecDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Specification?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the spec and wireframe for this feature.
+              Your chat history will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="outline">Cancel</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteSpec}
+                disabled={isDeletingSpec}
+              >
+                {isDeletingSpec ? "Deleting..." : "Delete"}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

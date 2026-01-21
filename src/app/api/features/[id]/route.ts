@@ -36,6 +36,9 @@ const updateFeatureSchema = z.object({
   priority: z.number().int().optional(),
   sortOrder: z.number().int().optional(),
   requestCount: z.number().int().min(0).optional(),
+  // Allow clearing spec and wireframe (null to clear)
+  specMarkdown: z.string().nullable().optional(),
+  wireframe: z.string().nullable().optional(),
 });
 
 // Map 'current' to 'ready' for database storage
@@ -58,6 +61,17 @@ export async function PATCH(
       ...data,
       status: mapStatusToDb(data.status),
     };
+
+    // Explicitly handle null values for spec clearing
+    // (spreading doesn't always preserve null in all cases)
+    if (data.specMarkdown === null) {
+      updateData.specMarkdown = null;
+    }
+    if (data.wireframe === null) {
+      updateData.wireframe = null;
+    }
+
+    console.log('[PATCH /api/features] Update data:', JSON.stringify(updateData, null, 2));
 
     // If status is changing and sortOrder is not explicitly provided,
     // auto-set sortOrder to place the feature at the top of the new column
