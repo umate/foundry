@@ -28,6 +28,7 @@ export type MessagePart =
   | { type: "activity"; message: string }
   | { type: "tool-generateSpec"; markdown: string }
   | { type: "tool-updateSpec"; markdown: string; changeSummary: string }
+  | { type: "tool-generateWireframe"; wireframe: string }
   | { type: "tool-use"; name: string; input: unknown }
   | { type: "file-search-result"; files: string[]; count: number }
   | { type: "file-read-result"; path: string; lineCount?: number }

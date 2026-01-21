@@ -16,6 +16,7 @@ interface SSEEvent {
     type: string;
     markdown?: string;
     changeSummary?: string;
+    wireframe?: string;
   };
   result?: string;
   cost?: number;
@@ -41,6 +42,7 @@ export interface StreamCallbacks {
   onComplete: () => void;
   onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
+  onWireframeGenerated?: (wireframe: string) => void;
 }
 
 export interface StreamController {
@@ -66,6 +68,7 @@ export async function startStream(
   // Track notification state per stream
   let specNotified = false;
   let updateNotified = false;
+  let wireframeNotified = false;
   let eventCount = 0;
 
   console.log(`[StreamManager] Starting stream for feature: ${featureId}`);
@@ -220,6 +223,19 @@ export async function startStream(
                   if (!updateNotified && callbacks.onPendingChange) {
                     updateNotified = true;
                     callbacks.onPendingChange(event.output.markdown, event.output.changeSummary);
+                  }
+                } else if (event.name === "generateWireframe" && event.output?.wireframe) {
+                  console.log('[StreamManager] Wireframe event received', { wireframeLength: event.output.wireframe?.length });
+                  assistantParts.push({
+                    type: "tool-generateWireframe",
+                    wireframe: event.output.wireframe
+                  });
+                  updateAssistantMessage();
+                  console.log('[StreamManager] Checking wireframe callback', { wireframeNotified, hasCallback: !!callbacks.onWireframeGenerated });
+                  if (!wireframeNotified && callbacks.onWireframeGenerated) {
+                    wireframeNotified = true;
+                    console.log('[StreamManager] Calling onWireframeGenerated callback');
+                    callbacks.onWireframeGenerated(event.output.wireframe);
                   }
                 } else {
                   // Fallback for any other tool_result - emit raw for visibility

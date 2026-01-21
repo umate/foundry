@@ -46,6 +46,7 @@ export const features = pgTable('features', {
   requestCount: integer('request_count').notNull().default(0),
   parentId: uuid('parent_id'),
   specMarkdown: text('spec_markdown'), // Feature spec as markdown
+  wireframe: text('wireframe'), // ASCII wireframe showing UI layout
   initialIdea: text('initial_idea'), // The raw idea text user submitted
   summary: text('summary'), // AI-generated 1-2 sentence summary for card display
   subtasks: jsonb('subtasks').$type<SubTask[]>().default([]), // Checklist items

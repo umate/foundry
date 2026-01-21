@@ -17,6 +17,7 @@ interface StreamOptions {
   thinkingEnabled?: boolean;
   onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
+  onWireframeGenerated?: (wireframe: string) => void;
 }
 
 interface ChatMessageInput {
@@ -189,7 +190,8 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
           abortControllersRef.current.delete(featureId);
         },
         onSpecGenerated: options.onSpecGenerated,
-        onPendingChange: options.onPendingChange
+        onPendingChange: options.onPendingChange,
+        onWireframeGenerated: options.onWireframeGenerated
       },
       abortController
     );

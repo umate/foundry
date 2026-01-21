@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FeatureChat } from "@/components/feature/feature-chat";
 import { SpecEditor } from "@/components/feature/spec-editor";
+import { WireframeViewer } from "@/components/feature/wireframe-viewer";
 import { CodeReviewViewer } from "@/components/feature/code-review-viewer";
 import { CollapsibleSideBar } from "@/components/ui/collapsible-side-bar";
 import { FeatureStatus, STATUS_LABELS } from "@/types/feature";
@@ -44,6 +45,7 @@ interface FeatureData {
   description: string | null;
   status: FeatureStatus;
   specMarkdown: string | null;
+  wireframe: string | null;
   initialIdea: string | null;
 }
 
@@ -55,7 +57,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [feature, setFeature] = useState<FeatureData | null>(null);
   const [messages, setMessages] = useState<FeatureMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openPanel, setOpenPanel] = useState<'spec' | 'code-review' | null>(null);
+  const [openPanel, setOpenPanel] = useState<'spec' | 'wireframe' | 'code-review' | null>(null);
 
   // Get background stream for sending implementation messages
   const { sendMessage: bgSendMessage } = useBackgroundStream();
@@ -66,6 +68,9 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [originalMarkdown, setOriginalMarkdown] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Wireframe state
+  const [wireframeContent, setWireframeContent] = useState("");
 
   // Session reset key
   const [messagesKey, setMessagesKey] = useState(0);
@@ -116,9 +121,11 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
             description: featureData.description,
             status: featureData.status === "ready" ? "current" : featureData.status,
             specMarkdown: featureData.specMarkdown,
+            wireframe: featureData.wireframe,
             initialIdea: featureData.initialIdea
           });
           setSpecContent(featureData.specMarkdown || "");
+          setWireframeContent(featureData.wireframe || "");
         }
 
         // Load messages
@@ -207,6 +214,26 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     // Clear initialIdea to prevent auto-send on remount
     setFeature((prev) => (prev ? { ...prev, initialIdea: null } : null));
   }, []);
+
+  // Handle wireframe generation
+  const handleWireframeGenerated = useCallback(async (wireframe: string) => {
+    console.log('[FeatureChatPanel] handleWireframeGenerated called', { featureId: feature?.id, wireframeLength: wireframe?.length });
+    if (!feature?.id) {
+      console.log('[FeatureChatPanel] No feature ID, returning early');
+      return;
+    }
+    setWireframeContent(wireframe);
+    setOpenPanel('wireframe');
+    try {
+      await fetch(`/api/features/${feature.id}/wireframe`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wireframe }),
+      });
+    } catch (error) {
+      console.error('Failed to save wireframe:', error);
+    }
+  }, [feature?.id]);
 
   // Handle status transition
   const handleStatusTransition = useCallback(
@@ -406,6 +433,18 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           />
         </CollapsibleSideBar>
 
+        {/* Wireframe Panel - Collapsible side bar */}
+        {wireframeContent && (
+          <CollapsibleSideBar
+            label="WIREFRAME"
+            isExpanded={openPanel === 'wireframe'}
+            onToggle={() => setOpenPanel(openPanel === 'wireframe' ? null : 'wireframe')}
+            hasContent={true}
+          >
+            <WireframeViewer wireframe={wireframeContent} />
+          </CollapsibleSideBar>
+        )}
+
         {/* Code Review Panel - Collapsible side bar (only when current or done) */}
         {(feature?.status === "current" || feature?.status === "done") && (
           <CollapsibleSideBar
@@ -556,6 +595,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                   onPendingChange={handlePendingChange}
                   onAcceptChange={handleAcceptChange}
                   onRejectChange={handleRejectChange}
+                  onWireframeGenerated={handleWireframeGenerated}
                   onSessionReset={handleSessionReset}
                   currentSpecMarkdown={specContent}
                   hasPendingChange={proposedMarkdown !== null}

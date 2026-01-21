@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SpecEditor } from './spec-editor';
+import { WireframeViewer } from './wireframe-viewer';
 import { FeatureChat } from './feature-chat';
 import { AppHeader } from '@/components/layout/app-header';
 import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
@@ -16,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import type { Feature, FeatureMessage, Project } from '@/db/schema';
 import type { MDXEditorMethods } from '@mdxeditor/editor';
@@ -32,6 +34,8 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
 
   const [currentTitle, setCurrentTitle] = useState(feature.title);
   const [specContent, setSpecContent] = useState(feature.specMarkdown || '');
+  const [wireframeContent, setWireframeContent] = useState(feature.wireframe || '');
+  const [activeTab, setActiveTab] = useState<'spec' | 'wireframe'>('spec');
   const [isLocked, setIsLocked] = useState(!feature.specMarkdown);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -59,6 +63,23 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
       editorRef.current.setMarkdown(markdown);
     }
   }, []);
+
+  // Handle wireframe generation from chat
+  const handleWireframeGenerated = useCallback(async (wireframe: string) => {
+    setWireframeContent(wireframe);
+    setActiveTab('wireframe');
+
+    // Save wireframe to API
+    try {
+      await fetch(`/api/features/${feature.id}/wireframe`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wireframe }),
+      });
+    } catch (error) {
+      console.error('Failed to save wireframe:', error);
+    }
+  }, [feature.id]);
 
   // Handle pending change from updateSpec tool
   const handlePendingChange = useCallback((proposed: string) => {
@@ -178,23 +199,58 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
       {/* Main Content - Split Layout */}
       <main className="flex-1 flex min-h-0">
         {/* Left Panel - Editor (60%) */}
-        <div className="w-[60%] border-r border-border bg-card overflow-y-auto">
-          <SpecEditor
-            ref={editorRef}
-            content={proposedMarkdown ?? specContent}
-            onChange={handleContentChange}
-            isLocked={isLocked}
-            placeholder="The AI will generate a spec here based on your conversation..."
-            saveStatus={saveStatus}
-            diffMarkdown={originalMarkdown ?? undefined}
-            viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
-            projectContext={{
-              name: project.name,
-              description: project.description,
-              stack: project.stack,
-            }}
-            featureTitle={feature.title}
-          />
+        <div className="w-[60%] border-r border-border bg-card flex flex-col overflow-hidden">
+          {/* Only show tabs if wireframe exists */}
+          {wireframeContent ? (
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'spec' | 'wireframe')} className="flex flex-col h-full gap-0">
+              <div className="border-b border-border px-4 py-2">
+                <TabsList>
+                  <TabsTrigger value="spec">Spec</TabsTrigger>
+                  <TabsTrigger value="wireframe">Wireframe</TabsTrigger>
+                </TabsList>
+              </div>
+              <TabsContent value="spec" className="flex-1 overflow-y-auto m-0">
+                <SpecEditor
+                  ref={editorRef}
+                  content={proposedMarkdown ?? specContent}
+                  onChange={handleContentChange}
+                  isLocked={isLocked}
+                  placeholder="The AI will generate a spec here based on your conversation..."
+                  saveStatus={saveStatus}
+                  diffMarkdown={originalMarkdown ?? undefined}
+                  viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
+                  projectContext={{
+                    name: project.name,
+                    description: project.description,
+                    stack: project.stack,
+                  }}
+                  featureTitle={feature.title}
+                />
+              </TabsContent>
+              <TabsContent value="wireframe" className="flex-1 overflow-y-auto m-0">
+                <WireframeViewer wireframe={wireframeContent} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="flex-1 overflow-y-auto">
+              <SpecEditor
+                ref={editorRef}
+                content={proposedMarkdown ?? specContent}
+                onChange={handleContentChange}
+                isLocked={isLocked}
+                placeholder="The AI will generate a spec here based on your conversation..."
+                saveStatus={saveStatus}
+                diffMarkdown={originalMarkdown ?? undefined}
+                viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
+                projectContext={{
+                  name: project.name,
+                  description: project.description,
+                  stack: project.stack,
+                }}
+                featureTitle={feature.title}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Chat (40%) */}
@@ -209,6 +265,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
             onPendingChange={handlePendingChange}
             onAcceptChange={handleAcceptChange}
             onRejectChange={handleRejectChange}
+            onWireframeGenerated={handleWireframeGenerated}
             onSessionReset={handleSessionReset}
             currentSpecMarkdown={specContent}
             hasPendingChange={proposedMarkdown !== null}

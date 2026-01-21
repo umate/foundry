@@ -49,6 +49,8 @@ interface FeatureChatProps {
   onAcceptChange: () => void;
   /** Called when user rejects pending change */
   onRejectChange: () => void;
+  /** Called when AI generates a wireframe */
+  onWireframeGenerated?: (wireframe: string) => void;
   /** Current spec markdown to send to AI for context */
   currentSpecMarkdown?: string;
   /** Whether there's a pending change awaiting review */
@@ -137,6 +139,7 @@ export function FeatureChat({
   onPendingChange,
   onAcceptChange,
   onRejectChange,
+  onWireframeGenerated,
   currentSpecMarkdown,
   hasPendingChange = false,
   hasSavedSpec = false,
@@ -215,7 +218,8 @@ export function FeatureChat({
         featureTitle,
         thinkingEnabled,
         onSpecGenerated: hasSavedSpec ? undefined : onSpecGenerated,
-        onPendingChange: hasPendingChange ? undefined : onPendingChange
+        onPendingChange: hasPendingChange ? undefined : onPendingChange,
+        onWireframeGenerated
       });
     },
     [
@@ -226,7 +230,8 @@ export function FeatureChat({
       hasSavedSpec,
       onSpecGenerated,
       hasPendingChange,
-      onPendingChange
+      onPendingChange,
+      onWireframeGenerated
     ]
   );
 
@@ -589,6 +594,12 @@ export function FeatureChat({
               seenToolCalls.add(key);
               return true;
             }
+            if (part.type === "tool-generateWireframe") {
+              const key = `${part.type}-${part.wireframe?.slice(0, 50) || ""}`;
+              if (seenToolCalls.has(key)) return false;
+              seenToolCalls.add(key);
+              return true;
+            }
             return true;
           });
 
@@ -642,6 +653,14 @@ export function FeatureChat({
                     return (
                       <ToolResponse key={`${message.id}-${i}`} toolName="Spec Generated">
                         <span className="text-sm">Spec generated — check the editor</span>
+                      </ToolResponse>
+                    );
+                  }
+
+                  if (part.type === "tool-generateWireframe") {
+                    return (
+                      <ToolResponse key={`${message.id}-${i}`} toolName="Wireframe Generated">
+                        <span className="text-sm">Wireframe generated — check the Wireframe tab</span>
                       </ToolResponse>
                     );
                   }
@@ -854,7 +873,7 @@ export function FeatureChat({
         {isLoading && (
           <div className="flex gap-3 items-start">
             <span className="w-2 h-2 rounded-full shrink-0 mt-2 bg-secondary animate-pulse" />
-            <p className="text-sm pt-0.5 font-medium text-muted-foreground/50 animate-thinking-pulse">
+            <p className="text-xs pt-0.5 font-mono text-muted-foreground/50 animate-thinking-pulse">
               {thinkingPhrase}
             </p>
           </div>

@@ -50,19 +50,6 @@ export default function RootLayout({
           {children}
           <Toaster />
         </ThemeProvider>
-
-        {/* Foundry Feedback Widget */}
-        <Script id="foundry-widget-config" strategy="beforeInteractive">
-          {`
-            window.FOUNDRY_API_KEY = "fnd_f62e3b6dc7591901c63513ffde573791";
-            window.FOUNDRY_POSITION = "bottom-right";
-            window.FOUNDRY_COLOR = "#E85102";
-          `}
-        </Script>
-        <Script
-          src="http://localhost:3005/widget/foundry-widget.js"
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   );

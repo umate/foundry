@@ -312,6 +312,14 @@ export async function POST(
                   name: "updateSpec",
                   output: { type: "update", markdown: input.markdown, changeSummary: input.changeSummary }
                 });
+              } else if (toolCall.name === "mcp__foundry__generateWireframe") {
+                // Wireframe generation - extract the wireframe from tool input
+                const input = toolCall.input as { wireframe: string };
+                sendEvent({
+                  type: "tool_result",
+                  name: "generateWireframe",
+                  output: { type: "wireframe", wireframe: input.wireframe }
+                });
               } else if (toolCall.name === "AskUserQuestion" || toolCall.name === "mcp__foundry__askClarification") {
                 // Clarification questions - emit as clarification event
                 const input = toolCall.input as {
