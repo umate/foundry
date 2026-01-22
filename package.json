@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "update": "git pull && bun install && bun db:migrate && bun dev",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
     "db:studio": "drizzle-kit studio"

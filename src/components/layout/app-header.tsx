@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { PlusIcon, GearIcon, TrashIcon, GitDiffIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
@@ -22,7 +23,9 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
       {/* Left: Logo + Project Selector + Feature Breadcrumb */}
       <div className="flex items-center gap-3">
-        <Link href="/" className="font-mono text-base font-bold uppercase tracking-wider hover:opacity-80 transition-opacity">Foundry</Link>
+        <Link href="/" className="hover:opacity-80 transition-opacity">
+          <Image src="/foundry-logo-full.png" alt="Foundry" width={100} height={24} className="h-6 w-auto" />
+        </Link>
         <span className="text-foreground/30">|</span>
         <ProjectSelector
           currentProjectId={currentProjectId}

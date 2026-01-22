@@ -138,8 +138,8 @@ function setStoredThinkingMode(projectId: string, enabled: boolean) {
 
 // Available Claude models
 const AVAILABLE_MODELS = [
-  { id: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
-  { id: "anthropic/claude-opus-4", name: "Claude Opus 4" },
+  { id: "anthropic/claude-opus-4-5", name: "Claude Opus 4.5" },
+  { id: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
 ] as const;
 
 const DEFAULT_MODEL = AVAILABLE_MODELS[0].id;
