@@ -28,7 +28,6 @@ const SYSTEM_PROMPT = `You are a Product Thinking Partner helping refine feature
 - NEVER write "Selected Option:" or similar - let the user actually choose
 - When ready to finalize, use the \`generateSpec\` tool to create the initial spec
 - When user asks to modify an existing spec, use the \`updateSpec\` tool
-- When user asks for a wireframe, use the \`generateWireframe\` tool to create ASCII art showing the UI layout
 
 ## CRITICAL: Use Project Context
 The PROJECT CONTEXT above is essential. You MUST:
@@ -84,38 +83,7 @@ These are product-level questions. The product context already answers them.
 - Ask ONE question at a time using \`askClarification\`
 - Options must be specific tradeoffs, not "Yes/No/Maybe"
 - 2-3 exchanges max, then call \`generateSpec\`
-- Be opinionated - suggest what you think makes sense given the product
-
-## Wireframe Generation (IMPORTANT)
-**AUTOMATIC WIREFRAME GENERATION:**
-After generating a spec with \`generateSpec\`, you MUST IMMEDIATELY call \`generateWireframe\` if the feature involves ANY UI changes. This includes:
-- New pages, dialogs, modals, or panels
-- New buttons, forms, or interactive elements
-- Layout changes or new sections
-- New visual components or displays
-
-**Sequence:** generateSpec → generateWireframe (same turn, no user prompt needed)
-
-**Wireframe format:**
-- Use ONLY box-drawing characters: ┌ ┐ └ ┘ │ ─
-- Show layout structure with placeholder text (e.g., "Title", "Description", "BUTTON")
-- NO component names like \`<Card>\` or \`<Button>\` inside boxes
-- NO icon names or annotations - just visual boxes
-- Keep it simple and focused on the main UI addition
-- Example:
-\`\`\`
-┌─────────────────────────────────────┐
-│ ┌─────────────────────────────────┐ │
-│ │  Title                          │ │
-│ │  ─────                          │ │
-│ │  Description text here...       │ │
-│ │                                 │ │
-│ │  ┌──────────┐  ┌──────────┐     │ │
-│ │  │  CANCEL  │  │   SAVE   │     │ │
-│ │  └──────────┘  └──────────┘     │ │
-│ └─────────────────────────────────┘ │
-└─────────────────────────────────────┘
-\`\`\``;
+- Be opinionated - suggest what you think makes sense given the product`;
 
 const STOP_WHEN = [stepCountIs(12), hasToolCall("askClarification")];
 
@@ -154,15 +122,16 @@ const tools = {
     }
   }),
 
-  generateWireframe: tool({
-    description: "Generate an ASCII wireframe showing the main UI layout. Use only box-drawing characters (┌ ┐ └ ┘ │ ─) to create a visual representation. No component names or annotations inside boxes - just visual structure with placeholder text.",
-    inputSchema: z.object({
-      wireframe: z.string().describe("ASCII art wireframe using box-drawing characters only, showing layout structure without component names")
-    }),
-    execute: async ({ wireframe }) => {
-      return { type: "wireframe" as const, wireframe };
-    }
-  })
+  // Wireframe generation disabled - ASCII art alignment issues
+  // generateWireframe: tool({
+  //   description: "Generate an ASCII wireframe showing the main UI layout. Use only box-drawing characters (┌ ┐ └ ┘ │ ─) to create a visual representation. No component names or annotations inside boxes - just visual structure with placeholder text.",
+  //   inputSchema: z.object({
+  //     wireframe: z.string().describe("ASCII art wireframe using box-drawing characters only, showing layout structure without component names")
+  //   }),
+  //   execute: async ({ wireframe }) => {
+  //     return { type: "wireframe" as const, wireframe };
+  //   }
+  // })
 };
 
 // --- Internal Helpers ---

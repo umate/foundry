@@ -467,7 +467,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         </CollapsibleSideBar>
 
         {/* Wireframe Panel - Collapsible side bar */}
-        {wireframeContent && (
+        {/* {wireframeContent && (
           <CollapsibleSideBar
             label="WIREFRAME"
             isExpanded={openPanel === 'wireframe'}
@@ -476,7 +476,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           >
             <WireframeViewer wireframe={wireframeContent} />
           </CollapsibleSideBar>
-        )}
+        )} */}
 
         {/* Code Review Panel - Collapsible side bar (only when current or done) */}
         {(feature?.status === "current" || feature?.status === "done") && (

@@ -75,20 +75,21 @@ function createFoundryTools() {
           content: [{ type: "text" as const, text: JSON.stringify({ type: "update", markdown, changeSummary }) }]
         })
       ),
-      tool(
-        "generateWireframe",
-        "Generate an ASCII wireframe showing the main UI layout for the feature. Use box-drawing characters (┌ ┐ └ ┘ │ ─) to create the layout. Do NOT include component names or annotations inside the wireframe - just visual boxes and placeholder text.",
-        {
-          wireframe: z
-            .string()
-            .describe(
-              "ASCII art wireframe using box-drawing characters only, no component names or annotations"
-            )
-        },
-        async ({ wireframe }) => ({
-          content: [{ type: "text" as const, text: JSON.stringify({ type: "wireframe", wireframe }) }]
-        })
-      )
+      // Wireframe generation disabled - ASCII art alignment issues
+      // tool(
+      //   "generateWireframe",
+      //   "Generate an ASCII wireframe showing the main UI layout for the feature. Use box-drawing characters (┌ ┐ └ ┘ │ ─) to create the layout. Do NOT include component names or annotations inside the wireframe - just visual boxes and placeholder text.",
+      //   {
+      //     wireframe: z
+      //       .string()
+      //       .describe(
+      //         "ASCII art wireframe using box-drawing characters only, no component names or annotations"
+      //       )
+      //   },
+      //   async ({ wireframe }) => ({
+      //     content: [{ type: "text" as const, text: JSON.stringify({ type: "wireframe", wireframe }) }]
+      //   })
+      // )
     ]
   });
 }
@@ -206,36 +207,6 @@ Based on codebase analysis:
 - Be opinionated - suggest what you think makes sense
 - Reference the project context in your questions
 - If updating existing spec, use \`mcp__foundry__updateSpec\` instead
-
-## Wireframes (IMPORTANT)
-**AUTOMATIC WIREFRAME GENERATION:**
-After generating a spec with \`mcp__foundry__generateSpec\`, you MUST IMMEDIATELY call \`mcp__foundry__generateWireframe\` if the feature involves ANY UI changes. This includes:
-- New pages, dialogs, modals, or panels
-- New buttons, forms, or interactive elements
-- Layout changes or new sections
-- New visual components or displays
-
-**Sequence:** mcp__foundry__generateSpec → mcp__foundry__generateWireframe (same turn, no user prompt needed)
-
-**Wireframe format:**
-- Generate ASCII art using box-drawing characters (┌ ┐ └ ┘ │ ─)
-- Show the main UI layout structure only
-- Do NOT include component names like \`<Card>\` or \`<Button>\` inside the wireframe
-- Use placeholder text to indicate content areas (e.g., "Feature Title", "Description text...")
-- Example:
-\`\`\`
-┌─────────────────────────────────────┐
-│ ┌─────────────────────────────────┐ │
-│ │  Title                          │ │
-│ │  ─────                          │ │
-│ │  Description text here...       │ │
-│ │                                 │ │
-│ │  ┌──────────┐  ┌──────────┐     │ │
-│ │  │  CANCEL  │  │   SAVE   │     │ │
-│ │  └──────────┘  └──────────┘     │ │
-│ └─────────────────────────────────┘ │
-└─────────────────────────────────────┘
-\`\`\`
 
 ## Git Usage (READ-ONLY)
 You can use git commands for understanding the codebase:
@@ -390,8 +361,7 @@ export async function* createClaudeCodeStream(
     "AskUserQuestion", // Clarifying questions - agent MUST stop after calling
     "TodoWrite", // Task tracking
     "mcp__foundry__generateSpec",
-    "mcp__foundry__updateSpec",
-    "mcp__foundry__generateWireframe"
+    "mcp__foundry__updateSpec"
   ];
 
   const queryOptions: Parameters<typeof query>[0]["options"] = {
