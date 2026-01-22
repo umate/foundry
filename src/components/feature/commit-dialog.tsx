@@ -164,10 +164,10 @@ export function CommitDialog({
         }
       }
 
-      // Store commit hash and transition to committed state
+      // Store commit hash and close dialog
       setCommitHash(result.commitHash);
-      setDialogState("committed");
       onSuccess?.();
+      onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to commit");
     } finally {
@@ -205,7 +205,7 @@ export function CommitDialog({
 
       const result = await response.json();
       setPushResult({ remote: result.remote, branch: result.branch });
-      setDialogState("pushed");
+      onOpenChange(false); // Close dialog on successful push
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to push");
       setDialogState("committed"); // Go back to committed state on error
@@ -291,7 +291,7 @@ export function CommitDialog({
 
         const pushResult = await pushResponse.json();
         setPushResult({ remote: pushResult.remote, branch: pushResult.branch });
-        setDialogState("pushed");
+        onOpenChange(false); // Close dialog on successful push
       } catch (pushErr) {
         // Network error or other issue during push - commit already succeeded
         setError(
