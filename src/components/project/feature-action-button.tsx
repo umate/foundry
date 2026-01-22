@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Compass, Rocket, Check, Stop } from '@phosphor-icons/react';
+import { Compass, Rocket, Check } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { useBackgroundStream } from './background-stream-context';
-import { StreamIndicator } from './stream-indicator';
 import { Feature } from '@/types/feature';
 
 interface FeatureActionButtonProps {
@@ -15,25 +14,11 @@ interface FeatureActionButtonProps {
 
 export function FeatureActionButton({ feature, onFeatureUpdated, onOpenPanel }: FeatureActionButtonProps) {
   const [loading, setLoading] = useState(false);
-  const { isStreaming, sendMessage, stopStream } = useBackgroundStream();
-  const streaming = isStreaming(feature.id);
+  const { sendMessage } = useBackgroundStream();
   const hasChat = (feature.messageCount ?? 0) > 0;
 
   // Don't show button for done features
   if (feature.status === 'done') return null;
-
-  // Handle streaming state - show indicator with stop on click
-  if (streaming) {
-    return (
-      <button
-        onClick={(e) => { e.stopPropagation(); stopStream(feature.id); }}
-        className="flex items-center gap-1.5 h-6 px-2 rounded-sm bg-secondary/50 hover:bg-secondary transition-colors"
-      >
-        <StreamIndicator />
-        <Stop weight="bold" className="size-3" />
-      </button>
-    );
-  }
 
   // Determine button config based on state
   const config = getButtonConfig(feature.status, hasChat);
