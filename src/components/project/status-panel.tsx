@@ -199,6 +199,7 @@ export function StatusPanel({
                   <FeatureCard
                     feature={feature}
                     onFeatureClick={onFeatureClick}
+                    onFeatureUpdated={onFeatureUpdated}
                   />
                 </div>
                 {/* Drop indicator line - after */}

@@ -6,10 +6,12 @@ import { Feature, FeatureStatus } from '@/types/feature';
 import { useDrag } from './drag-context';
 import { useBackgroundStream } from './background-stream-context';
 import { StreamIndicator } from './stream-indicator';
+import { FeatureActionButton } from './feature-action-button';
 
 interface FeatureCardProps {
   feature: Feature;
   onFeatureClick: (featureId: string) => void;
+  onFeatureUpdated?: () => void;
 }
 
 const getFeatureIcon = (status: FeatureStatus) => {
@@ -28,6 +30,7 @@ const getFeatureIcon = (status: FeatureStatus) => {
 export function FeatureCard({
   feature,
   onFeatureClick,
+  onFeatureUpdated,
 }: FeatureCardProps) {
   const { setIsDragging, setDraggedFeatureId } = useDrag();
   const { isStreaming } = useBackgroundStream();
@@ -90,6 +93,15 @@ export function FeatureCard({
           </Badge>
         </div>
       )}
+
+      {/* Action Button */}
+      <div className="absolute bottom-2 right-2">
+        <FeatureActionButton
+          feature={feature}
+          onFeatureUpdated={onFeatureUpdated ?? (() => {})}
+          onOpenPanel={onFeatureClick}
+        />
+      </div>
     </div>
   );
 }
