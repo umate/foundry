@@ -41,15 +41,11 @@ export function FeatureActionButton({ feature, onFeatureUpdated, onOpenPanel }: 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    // "Continue" just opens the panel
-    if (config.action === 'continue') {
-      onOpenPanel?.(feature.id);
-      return;
-    }
-
     setLoading(true);
     try {
-      if (config.action === 'discover') {
+      if (config.action === 'continue') {
+        handleScope();
+      } else if (config.action === 'discover') {
         await handleDiscover();
       } else if (config.action === 'build') {
         await handleBuild();
@@ -59,6 +55,21 @@ export function FeatureActionButton({ feature, onFeatureUpdated, onOpenPanel }: 
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleScope = () => {
+    onOpenPanel?.(feature.id);
+    sendMessage(feature.id, { text: "Let's continue scoping this feature." }, {
+      featureTitle: feature.title,
+      onSpecGenerated: async (markdown) => {
+        await fetch(`/api/features/${feature.id}/spec`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ specMarkdown: markdown })
+        });
+        onFeatureUpdated();
+      }
+    });
   };
 
   const handleDiscover = async () => {
