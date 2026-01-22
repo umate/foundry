@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1766885505907,
+      "tag": "0000_create_users_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766894783662,
+      "tag": "0001_create_foundry_core_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766968188365,
+      "tag": "0002_add_prd_markdown_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767034630672,
+      "tag": "0003_create_feature_messages_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1767673610918,
+      "tag": "0004_add_widget_api_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1767727624942,
+      "tag": "0005_add_repo_path_to_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1768077117160,
+      "tag": "0006_add_summary_subtasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1768172484143,
+      "tag": "0007_rename_prd_to_spec",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1768250000000,
+      "tag": "0008_add_sort_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1768436475883,
+      "tag": "0009_add_images_to_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1768948161342,
+      "tag": "0010_add_wireframe_to_features",
+      "breakpoints": true
+    }
+  ]
+}

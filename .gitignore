@@ -41,9 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 # drizzle (ignore metadata, commit migration SQL files only)
-drizzle/meta/
-drizzle/*.json
-drizzle/migrations/meta/
+# drizzle/meta/
+# drizzle/*.json
+# drizzle/migrations/meta/
 !drizzle/migrations/*.sql
 
 # local data (uploaded images, etc.)
