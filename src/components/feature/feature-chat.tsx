@@ -6,6 +6,13 @@ import type { DisplayMessage, ClarificationQuestion, MessagePart } from "@/lib/h
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon, FloppyDiskIcon, PencilIcon, WarningIcon, ImageIcon, XIcon } from "@phosphor-icons/react";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
@@ -129,6 +136,32 @@ function setStoredThinkingMode(projectId: string, enabled: boolean) {
   localStorage.setItem(THINKING_MODE_KEY, JSON.stringify(map));
 }
 
+// Available Claude models
+const AVAILABLE_MODELS = [
+  { id: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
+  { id: "anthropic/claude-opus-4", name: "Claude Opus 4" },
+] as const;
+
+const DEFAULT_MODEL = AVAILABLE_MODELS[0].id;
+const SELECTED_MODEL_KEY = "foundry-selected-model";
+
+// Get stored model from localStorage
+function getStoredModel(): string {
+  if (typeof window === "undefined") return DEFAULT_MODEL;
+  const stored = localStorage.getItem(SELECTED_MODEL_KEY);
+  // Validate stored model is still available
+  if (stored && AVAILABLE_MODELS.some((m) => m.id === stored)) {
+    return stored;
+  }
+  return DEFAULT_MODEL;
+}
+
+// Store selected model in localStorage
+function setStoredModel(modelId: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SELECTED_MODEL_KEY, modelId);
+}
+
 export function FeatureChat({
   projectId,
   featureId,
@@ -156,6 +189,7 @@ export function FeatureChat({
   const [thinkingEnabled, setThinkingEnabled] = useState(() =>
     getStoredThinkingMode(projectId)
   );
+  const [selectedModel, setSelectedModel] = useState(getStoredModel);
   // Progressive message loading
   const MESSAGES_PER_PAGE = 5;
   const [visibleCount, setVisibleCount] = useState(MESSAGES_PER_PAGE);
@@ -202,6 +236,11 @@ export function FeatureChat({
   useEffect(() => {
     setStoredThinkingMode(projectId, thinkingEnabled);
   }, [projectId, thinkingEnabled]);
+
+  // Persist model selection to localStorage
+  useEffect(() => {
+    setStoredModel(selectedModel);
+  }, [selectedModel]);
 
   // Wrapper to include spec callbacks when sending messages
   const sendMessage = useCallback(
@@ -973,6 +1012,25 @@ export function FeatureChat({
                       />
                       <span className="text-xs font-mono text-muted-foreground">Thinking</span>
                     </label>
+                    <Select value={selectedModel} onValueChange={setSelectedModel}>
+                      <SelectTrigger
+                        className="h-6 w-auto text-[10px] font-mono px-2 py-0 border-muted-foreground/30 bg-transparent gap-1"
+                        disabled={isLoading}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AVAILABLE_MODELS.map((model) => (
+                          <SelectItem
+                            key={model.id}
+                            value={model.id}
+                            className="text-xs font-mono"
+                          >
+                            {model.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}

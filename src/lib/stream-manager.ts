@@ -335,13 +335,20 @@ export async function startStream(
                 updateAssistantMessage();
                 break;
 
-              case "tool_error":
-                assistantParts.push({
-                  type: "tool-error",
-                  error: event.error || "Unknown error"
-                });
-                updateAssistantMessage();
+              case "tool_error": {
+                const error = event.error || "Unknown error";
+                // Filter out file-not-found errors from agent path guessing
+                const isFileNotFoundError = error.includes("File does not exist") ||
+                                            error.includes("does not exist");
+                if (!isFileNotFoundError) {
+                  assistantParts.push({
+                    type: "tool-error",
+                    error
+                  });
+                  updateAssistantMessage();
+                }
                 break;
+              }
 
               case "raw":
                 assistantParts.push({
