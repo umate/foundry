@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { projectRepository } from "@/db/repositories/project.repository";
+import { getProjectWithRepo } from "@/lib/project/get-project-repo";
 
 const execAsync = promisify(exec);
 
@@ -49,25 +49,9 @@ export async function POST(request: NextRequest) {
     const body: PushRequest = await request.json();
     const { projectId } = body;
 
-    if (!projectId) {
-      return NextResponse.json(
-        { error: "projectId is required" },
-        { status: 400 }
-      );
-    }
-
-    const project = await projectRepository.findById(projectId);
-
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    if (!project.repoPath) {
-      return NextResponse.json(
-        { error: "No repository path configured" },
-        { status: 400 }
-      );
-    }
+    const result = await getProjectWithRepo(projectId);
+    if (!result.success) return result.response;
+    const { project } = result;
 
     // Check for remotes
     const remotes = await getRemotes(project.repoPath);
@@ -181,29 +165,11 @@ export async function POST(request: NextRequest) {
 // GET endpoint to check remote status
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const projectId = searchParams.get("projectId");
-
-  if (!projectId) {
-    return NextResponse.json(
-      { error: "projectId is required" },
-      { status: 400 }
-    );
-  }
+  const result = await getProjectWithRepo(searchParams.get("projectId"));
+  if (!result.success) return result.response;
+  const { project } = result;
 
   try {
-    const project = await projectRepository.findById(projectId);
-
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    if (!project.repoPath) {
-      return NextResponse.json(
-        { error: "No repository path configured" },
-        { status: 400 }
-      );
-    }
-
     const remotes = await getRemotes(project.repoPath);
     const branch = await getCurrentBranch(project.repoPath);
 

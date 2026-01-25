@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { generateText } from "ai";
-import { projectRepository } from "@/db/repositories/project.repository";
+import { getProjectWithRepo } from "@/lib/project/get-project-repo";
 
 const execAsync = promisify(exec);
 
@@ -33,26 +33,11 @@ Examples of bad messages:
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const projectId = searchParams.get("projectId");
-
-  if (!projectId) {
-    return NextResponse.json({ error: "projectId is required" }, { status: 400 });
-  }
+  const result = await getProjectWithRepo(searchParams.get("projectId"));
+  if (!result.success) return result.response;
+  const { project } = result;
 
   try {
-    const project = await projectRepository.findById(projectId);
-
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    if (!project.repoPath) {
-      return NextResponse.json(
-        { error: "No repository path configured" },
-        { status: 400 }
-      );
-    }
-
     // Get combined diff (staged + unstaged)
     const [stagedResult, unstagedResult] = await Promise.allSettled([
       execAsync("git diff --staged", {

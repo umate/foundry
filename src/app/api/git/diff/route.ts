@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { readFile, stat } from 'fs/promises';
 import { join } from 'path';
-import { projectRepository } from '@/db/repositories/project.repository';
+import { getProjectWithRepo } from '@/lib/project/get-project-repo';
 
 const execAsync = promisify(exec);
 
@@ -138,43 +138,11 @@ async function getUntrackedFiles(repoPath: string): Promise<FileDiff[]> {
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const projectId = searchParams.get('projectId');
-
-  if (!projectId) {
-    return NextResponse.json(
-      { error: 'projectId is required' },
-      { status: 400 }
-    );
-  }
+  const result = await getProjectWithRepo(searchParams.get('projectId'));
+  if (!result.success) return result.response;
+  const { project } = result;
 
   try {
-    // Fetch project to get repoPath
-    const project = await projectRepository.findById(projectId);
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!project.repoPath) {
-      return NextResponse.json(
-        { error: 'No repository path configured for this project' },
-        { status: 400 }
-      );
-    }
-
-    // Check if the directory exists before trying to run git commands
-    try {
-      await stat(project.repoPath);
-    } catch {
-      return NextResponse.json(
-        { error: `Directory not found: ${project.repoPath}` },
-        { status: 400 }
-      );
-    }
-
     // Run git diff commands and get untracked files
     // Note: git diff exits with code 1 when there are differences, which execAsync treats as an error.
     // We need to capture stdout from the error object in that case.

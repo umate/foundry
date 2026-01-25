@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exec, spawn } from "child_process";
 import { promisify } from "util";
-import { projectRepository } from "@/db/repositories/project.repository";
+import { getProjectWithRepo } from "@/lib/project/get-project-repo";
 
 const execAsync = promisify(exec);
 
@@ -38,13 +38,6 @@ export async function POST(request: NextRequest) {
     const body: CommitRequest = await request.json();
     const { projectId, message } = body;
 
-    if (!projectId) {
-      return NextResponse.json(
-        { error: "projectId is required" },
-        { status: 400 }
-      );
-    }
-
     if (!message?.trim()) {
       return NextResponse.json(
         { error: "Commit message is required" },
@@ -52,18 +45,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const project = await projectRepository.findById(projectId);
-
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    if (!project.repoPath) {
-      return NextResponse.json(
-        { error: "No repository path configured" },
-        { status: 400 }
-      );
-    }
+    const result = await getProjectWithRepo(projectId);
+    if (!result.success) return result.response;
+    const { project } = result;
 
     // Stage all changes
     await execAsync("git add -A", { cwd: project.repoPath });
