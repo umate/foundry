@@ -165,6 +165,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Check if the directory exists before trying to run git commands
+    try {
+      await stat(project.repoPath);
+    } catch {
+      return NextResponse.json(
+        { error: `Directory not found: ${project.repoPath}` },
+        { status: 400 }
+      );
+    }
+
     // Run git diff commands and get untracked files
     // Note: git diff exits with code 1 when there are differences, which execAsync treats as an error.
     // We need to capture stdout from the error object in that case.

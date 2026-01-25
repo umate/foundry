@@ -24,7 +24,8 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
       {/* Left: Logo + Project Selector + Feature Breadcrumb */}
       <div className="flex items-center gap-3">
         <Link href="/" className="hover:opacity-80 transition-opacity">
-          <Image src="/foundry-logo-full.png" alt="Foundry" width={100} height={24} className="h-6 w-auto" />
+          <Image src="/foundry-logo-full.png" alt="Foundry" width={100} height={24} className="h-6 w-auto dark:hidden" />
+          <Image src="/foundry-logo-inverted.png" alt="Foundry" width={100} height={24} className="h-6 w-auto hidden dark:block" />
         </Link>
         <span className="text-foreground/30">|</span>
         <ProjectSelector
