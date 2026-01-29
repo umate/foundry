@@ -219,11 +219,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
 
   // Handle wireframe generation
   const handleWireframeGenerated = useCallback(async (wireframe: string) => {
-    console.log('[FeatureChatPanel] handleWireframeGenerated called', { featureId: feature?.id, wireframeLength: wireframe?.length });
-    if (!feature?.id) {
-      console.log('[FeatureChatPanel] No feature ID, returning early');
-      return;
-    }
+    if (!feature?.id) return;
     setWireframeContent(wireframe);
     setOpenPanel('wireframe');
     try {

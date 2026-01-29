@@ -70,9 +70,6 @@ export async function startStream(
   let specNotified = false;
   let updateNotified = false;
   let wireframeNotified = false;
-  let eventCount = 0;
-
-  console.log(`[StreamManager] Starting stream for feature: ${featureId}`);
 
   // Add user message is already done by context, just start streaming
   callbacks.onStatusChange("streaming");
@@ -159,14 +156,11 @@ export async function startStream(
         if (line.startsWith("data: ")) {
           const data = line.slice(6);
           if (data === "[DONE]") {
-            console.log(`[StreamManager] Received [DONE] marker`);
             continue;
           }
 
           try {
             const event: SSEEvent = JSON.parse(data);
-            eventCount++;
-            console.log(`[StreamManager] Event #${eventCount}: type=${event.type}`, event.name ? `name=${event.name}` : "");
 
             switch (event.type) {
               case "text":
@@ -227,16 +221,13 @@ export async function startStream(
                     callbacks.onPendingChange(event.output.markdown, event.output.changeSummary);
                   }
                 } else if (event.name === "generateWireframe" && event.output?.wireframe) {
-                  console.log('[StreamManager] Wireframe event received', { wireframeLength: event.output.wireframe?.length });
                   assistantParts.push({
                     type: "tool-generateWireframe",
                     wireframe: event.output.wireframe
                   });
                   updateAssistantMessage();
-                  console.log('[StreamManager] Checking wireframe callback', { wireframeNotified, hasCallback: !!callbacks.onWireframeGenerated });
                   if (!wireframeNotified && callbacks.onWireframeGenerated) {
                     wireframeNotified = true;
-                    console.log('[StreamManager] Calling onWireframeGenerated callback');
                     callbacks.onWireframeGenerated(event.output.wireframe);
                   }
                 } else {
@@ -390,7 +381,6 @@ export async function startStream(
                 break;
 
               case "done":
-                console.log(`[StreamManager] Received done event, total events: ${eventCount}`);
                 callbacks.onStatusChange("ready");
                 callbacks.onComplete();
                 break;
@@ -400,7 +390,6 @@ export async function startStream(
                 throw new Error(event.message || "Unknown error");
 
               default:
-                console.log(`[StreamManager] Unhandled event type: ${event.type}, adding as raw`);
                 assistantParts.push({
                   type: "raw",
                   messageType: event.type,
@@ -415,12 +404,10 @@ export async function startStream(
       }
     }
 
-    console.log(`[StreamManager] Stream reader loop ended. Total events processed: ${eventCount}, assistant parts: ${assistantParts.length}`);
     callbacks.onStatusChange("ready");
     callbacks.onComplete();
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      console.log(`[StreamManager] Stream aborted by user`);
       callbacks.onStatusChange("ready");
       return;
     }

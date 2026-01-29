@@ -71,8 +71,6 @@ export async function PATCH(
       updateData.wireframe = null;
     }
 
-    console.log('[PATCH /api/features] Update data:', JSON.stringify(updateData, null, 2));
-
     // If status is changing and sortOrder is not explicitly provided,
     // auto-set sortOrder to place the feature at the top of the new column
     if (data.status && data.sortOrder === undefined) {

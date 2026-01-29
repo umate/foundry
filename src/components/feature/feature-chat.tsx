@@ -7,7 +7,17 @@ import type { DisplayMessage, ClarificationQuestion, MessagePart } from "@/lib/h
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon, FloppyDiskIcon, PencilIcon, WarningIcon, ImageIcon, XIcon } from "@phosphor-icons/react";
+import {
+  PaperPlaneRightIcon,
+  StopIcon,
+  MagnifyingGlassIcon,
+  FileIcon,
+  FloppyDiskIcon,
+  PencilIcon,
+  WarningIcon,
+  ImageIcon,
+  XIcon
+} from "@phosphor-icons/react";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import {
@@ -137,7 +147,7 @@ function setStoredThinkingMode(projectId: string, enabled: boolean) {
 // Available Claude models
 const AVAILABLE_MODELS = [
   { id: "anthropic/claude-opus-4-5", name: "Claude Opus 4.5", short: "Opus 4.5" },
-  { id: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5", short: "Sonnet 4.5" },
+  { id: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5", short: "Sonnet 4.5" }
 ] as const;
 
 const DEFAULT_MODEL = AVAILABLE_MODELS[0].id;
@@ -186,9 +196,7 @@ export function FeatureChat({
   const [resolvedChanges, setResolvedChanges] = useState<Map<string, "accepted" | "rejected">>(new Map());
   const [thinkingPhraseIndex, setThinkingPhraseIndex] = useState(0);
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [thinkingEnabled, setThinkingEnabled] = useState(() =>
-    getStoredThinkingMode(projectId)
-  );
+  const [thinkingEnabled, setThinkingEnabled] = useState(() => getStoredThinkingMode(projectId));
   const [selectedModel, setSelectedModel] = useState(getStoredModel);
   // Progressive message loading
   const MESSAGES_PER_PAGE = 5;
@@ -252,15 +260,18 @@ export function FeatureChat({
         mimeType: img.mimeType
       }));
 
-      contextSendMessage({ text: content.text, images }, {
-        currentSpecMarkdown,
-        featureTitle,
-        thinkingEnabled,
-        viewMode: mode,
-        onSpecGenerated: hasSavedSpec ? undefined : onSpecGenerated,
-        onPendingChange: hasPendingChange ? undefined : onPendingChange,
-        onWireframeGenerated
-      });
+      contextSendMessage(
+        { text: content.text, images },
+        {
+          currentSpecMarkdown,
+          featureTitle,
+          thinkingEnabled,
+          viewMode: mode,
+          onSpecGenerated: hasSavedSpec ? undefined : onSpecGenerated,
+          onPendingChange: hasPendingChange ? undefined : onPendingChange,
+          onWireframeGenerated
+        }
+      );
     },
     [
       contextSendMessage,
@@ -429,23 +440,26 @@ export function FeatureChat({
     });
   }, []);
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
 
-    const imageFiles: File[] = [];
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        if (file) imageFiles.push(file);
+      const imageFiles: File[] = [];
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
       }
-    }
 
-    if (imageFiles.length > 0) {
-      e.preventDefault();
-      handleFilesSelected(imageFiles);
-    }
-  }, [handleFilesSelected]);
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFilesSelected(imageFiles);
+      }
+    },
+    [handleFilesSelected]
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Escape cancels generation
@@ -552,7 +566,7 @@ export function FeatureChat({
     if (!hasMoreMessages) return;
     const container = scrollContainerRef.current;
     const prevScrollHeight = container?.scrollHeight ?? 0;
-    setVisibleCount(prev => Math.min(prev + MESSAGES_PER_PAGE, messages.length));
+    setVisibleCount((prev) => Math.min(prev + MESSAGES_PER_PAGE, messages.length));
     // Restore scroll position after state update
     requestAnimationFrame(() => {
       if (container) {
@@ -588,18 +602,10 @@ export function FeatureChat({
   return (
     <div className="flex flex-col h-full bg-card">
       {/* Messages Area */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-      >
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Load more button */}
         {hasMoreMessages && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={handleLoadMoreMessages}
-          >
+          <Button variant="outline" size="sm" className="w-full" onClick={handleLoadMoreMessages}>
             Load {messages.length - visibleCount} earlier messages
           </Button>
         )}
@@ -653,7 +659,7 @@ export function FeatureChat({
 
           return (
             <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex gap-3 items-start"}>
-              {message.role === "assistant" && <span className="w-2 h-2 rounded-full shrink-0 mt-1.5 bg-success" />}
+              {message.role === "assistant" && <span className="w-2 h-2 rounded-full shrink-0 mt-2 bg-success" />}
               <div className={message.role === "user" ? "max-w-[80%] space-y-3" : "flex-1 min-w-0 space-y-3"}>
                 {uniqueParts.map((part, i) => {
                   if (part.type === "text" && part.text) {
@@ -870,10 +876,7 @@ export function FeatureChat({
                     }
 
                     return (
-                      <div
-                        key={`${message.id}-${i}`}
-                        className="text-xs text-muted-foreground/60 font-mono truncate"
-                      >
+                      <div key={`${message.id}-${i}`} className="text-xs text-muted-foreground/60 font-mono truncate">
                         [{part.messageType}] {summary}
                       </div>
                     );
@@ -893,17 +896,15 @@ export function FeatureChat({
 
                   // Render todo list from TodoWrite tool
                   if (part.type === "todo-list") {
-                    return (
-                      <TodoListCard
-                        key={`${message.id}-${i}`}
-                        todos={part.todos}
-                      />
-                    );
+                    return <TodoListCard key={`${message.id}-${i}`} todos={part.todos} />;
                   }
 
                   // Fallback: render any unknown part types as JSON for debugging
                   return (
-                    <div key={`${message.id}-${i}`} className="rounded-md bg-amber-500/10 border border-amber-500/30 p-2 overflow-x-auto">
+                    <div
+                      key={`${message.id}-${i}`}
+                      className="rounded-md bg-amber-500/10 border border-amber-500/30 p-2 overflow-x-auto"
+                    >
                       <div className="text-xs font-mono text-amber-600 dark:text-amber-400 mb-1">
                         [Unsupported: {part.type || "unknown"}]
                       </div>
@@ -920,10 +921,8 @@ export function FeatureChat({
 
         {isLoading && (
           <div className="flex gap-3 items-start">
-            <span className="w-2 h-2 rounded-full shrink-0 mt-2 bg-secondary animate-pulse" />
-            <p className="text-xs pt-0.5 font-mono text-muted-foreground/50 animate-thinking-pulse">
-              {thinkingPhrase}
-            </p>
+            <span className="w-2 h-2 rounded-full shrink-0 mt-1.5 bg-secondary animate-pulse" />
+            <p className="text-xs pt-0.5 font-mono text-muted-foreground/50 animate-thinking-pulse">{thinkingPhrase}</p>
           </div>
         )}
 
@@ -944,15 +943,15 @@ export function FeatureChat({
           </div>
         ) : (
           <>
-          <SuggestedActions
-            hasSavedSpec={hasSavedSpec}
-            mode={mode}
-            messages={messages}
-            isLoading={isLoading}
-            hasPendingChange={hasPendingChange}
-            onAction={handleSuggestedAction}
-          />
-          <form onSubmit={handleSubmit} className="px-3 pb-3">
+            <SuggestedActions
+              hasSavedSpec={hasSavedSpec}
+              mode={mode}
+              messages={messages}
+              isLoading={isLoading}
+              hasPendingChange={hasPendingChange}
+              onAction={handleSuggestedAction}
+            />
+            <form onSubmit={handleSubmit} className="px-3 pb-3">
               <div className="relative rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring">
                 {/* Hidden file input */}
                 <input
@@ -1034,14 +1033,14 @@ export function FeatureChat({
                       type="button"
                       disabled={isLoading}
                       onClick={() => {
-                        const currentIndex = AVAILABLE_MODELS.findIndex(m => m.id === selectedModel);
+                        const currentIndex = AVAILABLE_MODELS.findIndex((m) => m.id === selectedModel);
                         const nextIndex = (currentIndex + 1) % AVAILABLE_MODELS.length;
                         setSelectedModel(AVAILABLE_MODELS[nextIndex].id);
                       }}
                       className="h-6 px-2 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm transition-colors disabled:opacity-50"
-                      title={AVAILABLE_MODELS.find(m => m.id === selectedModel)?.name}
+                      title={AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name}
                     >
-                      {AVAILABLE_MODELS.find(m => m.id === selectedModel)?.short}
+                      {AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.short}
                     </button>
                     <button
                       type="button"
@@ -1054,94 +1053,94 @@ export function FeatureChat({
                     </button>
                   </div>
 
-                {/* Right: Reset, Spec action, and Send/Stop */}
-                <div className="flex items-center gap-2">
-                  <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-                    <AlertDialogTrigger asChild>
+                  {/* Right: Reset, Spec action, and Send/Stop */}
+                  <div className="flex items-center gap-2">
+                    <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          type="button"
+                          className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          title="Reset chat"
+                        >
+                          <ArrowsClockwise className="size-3.5" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Reset Chat Session?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete all chat messages for this feature. Your spec and feature data
+                            will be preserved.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel asChild>
+                            <Button variant="outline">Cancel</Button>
+                          </AlertDialogCancel>
+                          <AlertDialogAction asChild>
+                            <Button variant="secondary" onClick={handleResetSession}>
+                              Reset Session
+                            </Button>
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <div role="group" className="flex rounded-sm overflow-hidden border border-border">
                       <button
                         type="button"
-                        className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        title="Reset chat"
+                        onClick={() => setMode("pm")}
+                        className={cn(
+                          "h-5 px-1.5 text-[9px] font-mono uppercase tracking-wider transition-colors",
+                          mode === "pm"
+                            ? "bg-muted text-foreground font-semibold"
+                            : "text-muted-foreground/50 hover:text-muted-foreground"
+                        )}
                       >
-                        <ArrowsClockwise className="size-3.5" />
+                        PM
                       </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Reset Chat Session?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete all chat messages for this feature. Your spec and feature data will
-                          be preserved.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel asChild>
-                          <Button variant="outline">Cancel</Button>
-                        </AlertDialogCancel>
-                        <AlertDialogAction asChild>
-                          <Button variant="secondary" onClick={handleResetSession}>
-                            Reset Session
-                          </Button>
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      <button
+                        type="button"
+                        onClick={() => setMode("dev")}
+                        className={cn(
+                          "h-5 px-1.5 text-[9px] font-mono uppercase tracking-wider transition-colors",
+                          mode === "dev"
+                            ? "bg-muted text-foreground font-semibold"
+                            : "text-muted-foreground/50 hover:text-muted-foreground"
+                        )}
+                      >
+                        DEV
+                      </button>
+                    </div>
 
-                  <div role="group" className="flex rounded-sm overflow-hidden border border-border">
-                    <button
-                      type="button"
-                      onClick={() => setMode("pm")}
-                      className={cn(
-                        "h-5 px-1.5 text-[9px] font-mono uppercase tracking-wider transition-colors",
-                        mode === "pm"
-                          ? "bg-muted text-foreground font-semibold"
-                          : "text-muted-foreground/50 hover:text-muted-foreground"
-                      )}
-                    >
-                      PM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode("dev")}
-                      className={cn(
-                        "h-5 px-1.5 text-[9px] font-mono uppercase tracking-wider transition-colors",
-                        mode === "dev"
-                          ? "bg-muted text-foreground font-semibold"
-                          : "text-muted-foreground/50 hover:text-muted-foreground"
-                      )}
-                    >
-                      DEV
-                    </button>
+                    {isLoading || isUploadingImages ? (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon-sm"
+                        onClick={handleStop}
+                        disabled={isUploadingImages}
+                        title={isUploadingImages ? "Uploading..." : "Stop"}
+                        className="size-7"
+                      >
+                        <StopIcon weight="bold" className="size-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        variant={input.trim() || pendingImages.length > 0 ? "secondary" : "default"}
+                        size="icon-sm"
+                        disabled={!input.trim() && pendingImages.length === 0}
+                        title="Send (Enter)"
+                        className="size-7"
+                      >
+                        <PaperPlaneRightIcon weight="bold" className="size-4" />
+                      </Button>
+                    )}
                   </div>
-
-                  {isLoading || isUploadingImages ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon-sm"
-                      onClick={handleStop}
-                      disabled={isUploadingImages}
-                      title={isUploadingImages ? "Uploading..." : "Stop"}
-                      className="size-7"
-                    >
-                      <StopIcon weight="bold" className="size-4" />
-                    </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      variant={(input.trim() || pendingImages.length > 0) ? "secondary" : "default"}
-                      size="icon-sm"
-                      disabled={!input.trim() && pendingImages.length === 0}
-                      title="Send (Enter)"
-                      className="size-7"
-                    >
-                      <PaperPlaneRightIcon weight="bold" className="size-4" />
-                    </Button>
-                  )}
                 </div>
               </div>
-              </div>
-          </form>
+            </form>
           </>
         )}
       </div>

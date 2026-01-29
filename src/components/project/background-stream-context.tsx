@@ -146,7 +146,6 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
     updateStreamState(featureId, { messages: messagesWithUser, status: "streaming", error: null });
 
     // Start streaming
-    console.log(`[BackgroundContext] Starting stream for feature: ${featureId}`);
     startStream(
       featureId,
       messagesWithUser,
@@ -155,12 +154,9 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
       options.viewMode ?? "pm",
       {
         onStatusChange: (status) => {
-          console.log(`[BackgroundContext] Status change for ${featureId}: ${status}`);
           updateStreamState(featureId, { status });
         },
         onMessagesUpdate: (messages) => {
-          const lastMsg = messages[messages.length - 1];
-          console.log(`[BackgroundContext] Messages update for ${featureId}: ${messages.length} messages, last has ${lastMsg?.parts?.length || 0} parts`);
           updateStreamState(featureId, { messages });
         },
         onError: (error) => {
@@ -176,7 +172,6 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
           }
         },
         onComplete: () => {
-          console.log(`[BackgroundContext] Stream completed for ${featureId}`);
           // Show completion toast if panel is closed
           if (!openPanelsRef.current.has(featureId)) {
             const title = featureTitlesRef.current.get(featureId) || "Feature";

@@ -148,8 +148,6 @@ export async function POST(
     async start(controller) {
       const sendEvent = (data: unknown) => {
         if (sdkAbortController.signal.aborted) return;
-        const eventType = (data as { type?: string }).type || "unknown";
-        console.log(`[Agent] Sending SSE event: type=${eventType}`);
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         } catch {
@@ -160,9 +158,6 @@ export async function POST(
       try {
         // Track tool calls to map tool_use_id to tool name
         const toolCallMap = new Map<string, { name: string; input: unknown }>();
-        let messageCount = 0;
-
-        console.log("[Agent] Starting stream for feature:", featureId);
 
         for await (const message of createClaudeCodeStream(
           {
@@ -182,25 +177,17 @@ export async function POST(
           viewMode,
           sdkAbortController
         )) {
-          messageCount++;
-          const msgType = (message as { type?: string }).type || "unknown";
-          const msgSubtype = (message as { subtype?: string }).subtype;
-          console.log(`[Agent] Message #${messageCount}: type=${msgType}${msgSubtype ? `, subtype=${msgSubtype}` : ""}`);
-
           // Skip system init messages entirely
           if (isSystemMessage(message)) {
-            console.log(`[Agent] Skipping system message`);
             continue;
           }
 
           // Handle user messages (tool results)
           if (isUserMessage(message)) {
-            console.log(`[Agent] Processing user message`);
             const toolResult = message.tool_use_result;
             let handledToolResult = false;
 
             if (toolResult) {
-              console.log(`[Agent] User message has tool_use_result:`, Object.keys(toolResult));
               // Check if this is a file search result (Glob/Grep)
               if (toolResult.filenames && Array.isArray(toolResult.filenames)) {
                 const files = toolResult.filenames
@@ -271,17 +258,14 @@ export async function POST(
 
           // Handle different message types
           if (isAssistantMessage(message)) {
-            console.log(`[Agent] Processing assistant message`);
             // Extract and send text content
             const text = extractTextContent(message);
             if (text) {
-              console.log(`[Agent] Assistant has text content (${text.length} chars)`);
               sendEvent({ type: "text", content: text });
             }
 
             // Extract and send tool calls
             const toolCalls = extractToolCalls(message);
-            console.log(`[Agent] Assistant has ${toolCalls.length} tool calls`);
             for (const toolCall of toolCalls) {
               // Store tool call for matching with results
               toolCallMap.set(toolCall.id, { name: toolCall.name, input: toolCall.input });
@@ -396,7 +380,6 @@ export async function POST(
             }
           } else if (isResultMessage(message)) {
             // Stream complete
-            console.log(`[Agent] Result message received: subtype=${message.subtype}, cost=${message.total_cost_usd}, turns=${message.num_turns}`);
             sendEvent({
               type: "done",
               result: message.subtype,
@@ -404,8 +387,7 @@ export async function POST(
               turns: message.num_turns
             });
           } else {
-            // Emit any other unhandled message types as raw for debugging
-            console.log(`[Agent] Unhandled message type, emitting as raw:`, message);
+            // Emit any other unhandled message types as raw
             sendEvent({
               type: "raw",
               messageType: "unknown_sdk_message",
@@ -413,15 +395,12 @@ export async function POST(
             });
           }
         }
-        console.log(`[Agent] Stream loop ended. Total messages processed: ${messageCount}`);
       } catch (error) {
         const isAbort = error instanceof AbortError ||
           (error instanceof Error && error.name === "AbortError") ||
           sdkAbortController.signal.aborted;
 
-        if (isAbort) {
-          console.log("[Agent] Stream aborted (client disconnected)");
-        } else {
+        if (!isAbort) {
           console.error("[Agent] Claude Code agent error:", error);
           sendEvent({
             type: "error",
@@ -440,7 +419,6 @@ export async function POST(
       }
     },
     cancel() {
-      console.log("[Agent] ReadableStream cancelled");
       sdkAbortController.abort();
     }
   });
