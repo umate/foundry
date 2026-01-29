@@ -46,7 +46,7 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
       {/* Center: Search Bar */}
       <div className="flex items-center">
         <div className="relative w-72">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-foreground/40" />
           <input
             type="text"
             placeholder="Search features, tasks..."
