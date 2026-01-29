@@ -31,6 +31,7 @@ import { TodoListCard } from "./todo-list-card";
 import type { PendingImage } from "@/components/ui/image-upload";
 import { uploadImages, validateImageFile, type UploadedImage } from "@/lib/image-utils";
 import { shouldShowMessagePart, useMode } from "@/components/providers/mode-provider";
+import { SuggestedActions } from "@/components/feature/suggested-actions";
 
 // DB message content - stores full parts array (mirrors DisplayMessage.parts)
 type MessageContent = {
@@ -60,6 +61,8 @@ interface FeatureChatProps {
   hasSavedSpec?: boolean;
   /** Called when session is reset to clear parent state */
   onSessionReset?: () => void;
+  /** Called when an action triggers a status change (e.g., Implement → current) */
+  onStatusChange?: () => void;
 }
 
 // Tool response wrapper with subtle label
@@ -171,7 +174,8 @@ export function FeatureChat({
   currentSpecMarkdown,
   hasPendingChange = false,
   hasSavedSpec = false,
-  onSessionReset
+  onSessionReset,
+  onStatusChange
 }: FeatureChatProps) {
   const { mode, setMode } = useMode();
   const [input, setInput] = useState("");
@@ -509,14 +513,16 @@ export function FeatureChat({
     handleSendWithImages();
   };
 
-  const handleSpecAction = useCallback(() => {
-    const message = hasSavedSpec
-      ? "Based on everything discussed so far, please update the spec to reflect the changes."
-      : "Based on everything discussed so far, please generate the spec for this feature.";
-
-    saveMessage("user", { parts: [{ type: "text", text: message }] });
-    sendMessage({ text: message });
-  }, [hasSavedSpec, saveMessage, sendMessage]);
+  const handleSuggestedAction = useCallback(
+    (message: string, action: { triggersImplementation?: boolean }) => {
+      saveMessage("user", { parts: [{ type: "text", text: message }] });
+      sendMessage({ text: message });
+      if (action.triggersImplementation && onStatusChange) {
+        onStatusChange();
+      }
+    },
+    [saveMessage, sendMessage, onStatusChange]
+  );
 
   const handleClarificationSubmit = useCallback(
     (responses: Map<number, string | string[]>, questions: ClarificationQuestion[]) => {
@@ -931,13 +937,22 @@ export function FeatureChat({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border p-3 bg-card">
+      <div className="bg-card">
         {hasPendingChange ? (
-          <div className="text-center text-sm text-muted-foreground py-2">
+          <div className="text-center text-sm text-muted-foreground py-2 px-3">
             Review the proposed changes before continuing
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <>
+          <SuggestedActions
+            hasSavedSpec={hasSavedSpec}
+            mode={mode}
+            messages={messages}
+            isLoading={isLoading}
+            hasPendingChange={hasPendingChange}
+            onAction={handleSuggestedAction}
+          />
+          <form onSubmit={handleSubmit} className="px-3 pb-3">
               <div className="relative rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring">
                 {/* Hidden file input */}
                 <input
@@ -1099,15 +1114,6 @@ export function FeatureChat({
                     </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSpecAction}
-                    disabled={isLoading}
-                    className="px-2 py-0.5 rounded-sm text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                  >
-                    {hasSavedSpec ? "Update Spec" : "Generate Spec"}
-                  </button>
-
                   {isLoading || isUploadingImages ? (
                     <Button
                       type="button"
@@ -1136,6 +1142,7 @@ export function FeatureChat({
               </div>
               </div>
           </form>
+          </>
         )}
       </div>
     </div>

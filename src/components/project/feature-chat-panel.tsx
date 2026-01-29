@@ -635,6 +635,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                   currentSpecMarkdown={specContent}
                   hasPendingChange={proposedMarkdown !== null}
                   hasSavedSpec={!!feature.specMarkdown}
+                  onStatusChange={() => handleStatusTransition("ready")}
                 />
               </div>
 
