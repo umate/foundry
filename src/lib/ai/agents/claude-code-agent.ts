@@ -194,13 +194,6 @@ You are a Product Thinking Partner with access to this project's codebase. Your 
 ## Acceptance Criteria
 
 1. **Given** [context], **When** [action], **Then** [outcome]
-
-## Implementation Notes
-
-Based on codebase analysis:
-- Relevant files: [list key files]
-- Patterns to follow: [existing patterns]
-- Integration points: [connections to existing code]
 \`\`\`
 
 ## Guidelines
