@@ -22,7 +22,7 @@ export function ModeSwitch({ mode, onModeChange, disabled, className }: ModeSwit
         onClick={() => onModeChange("pm")}
         disabled={disabled}
         className={cn(
-          "h-7 px-2.5 text-[10px] font-mono uppercase tracking-wider transition-colors",
+          "h-6 px-2 text-[10px] font-mono uppercase tracking-wider transition-colors",
           mode === "pm"
             ? "bg-secondary text-secondary-foreground"
             : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -35,7 +35,7 @@ export function ModeSwitch({ mode, onModeChange, disabled, className }: ModeSwit
         onClick={() => onModeChange("dev")}
         disabled={disabled}
         className={cn(
-          "h-7 px-2.5 text-[10px] font-mono uppercase tracking-wider transition-colors",
+          "h-6 px-2 text-[10px] font-mono uppercase tracking-wider transition-colors",
           mode === "dev"
             ? "bg-secondary text-secondary-foreground"
             : "bg-muted text-muted-foreground hover:bg-muted/80"

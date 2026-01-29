@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { useFeatureStream } from "@/components/project/background-stream-context";
 import type { DisplayMessage, ClarificationQuestion, MessagePart } from "@/lib/hooks/use-claude-code-chat";
 import { Button } from "@/components/ui/button";
@@ -172,7 +173,7 @@ export function FeatureChat({
   hasSavedSpec = false,
   onSessionReset
 }: FeatureChatProps) {
-  const { mode } = useMode();
+  const { mode, setMode } = useMode();
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -1070,6 +1071,33 @@ export function FeatureChat({
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+
+                  <div role="group" className="flex rounded-sm overflow-hidden border border-border">
+                    <button
+                      type="button"
+                      onClick={() => setMode("pm")}
+                      className={cn(
+                        "h-5 px-1.5 text-[9px] font-mono uppercase tracking-wider transition-colors",
+                        mode === "pm"
+                          ? "bg-muted text-foreground font-semibold"
+                          : "text-muted-foreground/50 hover:text-muted-foreground"
+                      )}
+                    >
+                      PM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("dev")}
+                      className={cn(
+                        "h-5 px-1.5 text-[9px] font-mono uppercase tracking-wider transition-colors",
+                        mode === "dev"
+                          ? "bg-muted text-foreground font-semibold"
+                          : "text-muted-foreground/50 hover:text-muted-foreground"
+                      )}
+                    >
+                      DEV
+                    </button>
+                  </div>
 
                   <button
                     type="button"

@@ -3,8 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
 import { useTrackOpenPanel, useBackgroundStream } from "@/components/project/background-stream-context";
-import { ModeProvider, useMode } from "@/components/providers/mode-provider";
-import { ModeSwitch } from "@/components/feature/mode-switch";
+import { ModeProvider } from "@/components/providers/mode-provider";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -19,7 +18,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { FeatureChat } from "@/components/feature/feature-chat";
 import { SpecEditor } from "@/components/feature/spec-editor";
 import { WireframeViewer } from "@/components/feature/wireframe-viewer";
@@ -49,12 +47,6 @@ interface FeatureData {
   specMarkdown: string | null;
   wireframe: string | null;
   initialIdea: string | null;
-}
-
-// Small component that reads from ModeContext — must be rendered inside ModeProvider
-function FeatureHeaderModeToggle() {
-  const { mode, setMode } = useMode();
-  return <ModeSwitch mode={mode} onModeChange={setMode} />;
 }
 
 export function FeatureChatPanel({ featureId, projectId, project, onClose, onFeatureUpdated }: FeatureChatPanelProps) {
@@ -514,9 +506,11 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           {loading ? (
             <div className="flex flex-col h-full">
               {/* Skeleton Header */}
-              <div className="px-4 py-3 border-b border-border shrink-0 space-y-2">
-                <Skeleton className="h-5 w-3/4" />
-                <Skeleton className="h-5 w-16" />
+              <div className="px-3 py-1.5 border-b border-border shrink-0">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-6 w-20" />
+                </div>
               </div>
               {/* Skeleton Chat Area */}
               <div className="flex-1 p-4 space-y-4">
@@ -553,36 +547,35 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           ) : feature ? (
             <ModeProvider featureId={feature.id}>
               {/* Header */}
-              <div className="px-4 py-2 border-b border-border shrink-0">
+              <div className="px-3 py-1.5 border-b border-border shrink-0">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <h2 className="text-base font-semibold truncate">{feature.title}</h2>
-                    <Badge variant="outline" className="text-[10px] shrink-0">
+                  <h2 className="text-sm font-semibold truncate min-w-0 flex-1">
+                    {feature.title}
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground ml-2 font-normal">
                       {STATUS_LABELS[feature.status]}
-                    </Badge>
-                    <FeatureHeaderModeToggle />
-                  </div>
+                    </span>
+                  </h2>
                   <div className="flex items-center gap-1 shrink-0">
                     {/* Status transition buttons */}
                     {feature.status === "scoped" && (
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
                         onClick={handleStart}
-                        className="h-7 gap-1.5"
+                        className="h-6 gap-1.5 text-[10px]"
                       >
-                        <Play weight="bold" className="size-3.5" />
+                        <Play weight="bold" className="size-3" />
                         Start
                       </Button>
                     )}
                     {feature.status === "current" && (
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
                         onClick={() => handleStatusTransition("done")}
-                        className="h-7 gap-1.5"
+                        className="h-6 gap-1.5 text-[10px]"
                       >
-                        <CheckCircle weight="bold" className="size-3.5" />
+                        <CheckCircle weight="bold" className="size-3" />
                         Complete
                       </Button>
                     )}
@@ -591,10 +584,10 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8 text-muted-foreground hover:text-destructive"
+                          className="size-7 text-muted-foreground hover:text-destructive"
                           title="Delete feature"
                         >
-                          <Trash weight="bold" className="size-4" />
+                          <Trash weight="bold" className="size-3.5" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -617,8 +610,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="size-8">
-                      <X weight="bold" className="size-4" />
+                    <Button variant="ghost" size="icon" onClick={onClose} className="size-7">
+                      <X weight="bold" className="size-3.5" />
                     </Button>
                   </div>
                 </div>
