@@ -6,13 +6,6 @@ import type { DisplayMessage, ClarificationQuestion, MessagePart } from "@/lib/h
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { PaperPlaneRightIcon, StopIcon, MagnifyingGlassIcon, FileIcon, FloppyDiskIcon, PencilIcon, WarningIcon, ImageIcon, XIcon } from "@phosphor-icons/react";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
@@ -36,6 +29,7 @@ import { BashResultCard } from "./bash-result-card";
 import { TodoListCard } from "./todo-list-card";
 import type { PendingImage } from "@/components/ui/image-upload";
 import { uploadImages, validateImageFile, type UploadedImage } from "@/lib/image-utils";
+import { shouldShowMessagePart, useMode } from "@/components/providers/mode-provider";
 
 // DB message content - stores full parts array (mirrors DisplayMessage.parts)
 type MessageContent = {
@@ -138,8 +132,8 @@ function setStoredThinkingMode(projectId: string, enabled: boolean) {
 
 // Available Claude models
 const AVAILABLE_MODELS = [
-  { id: "anthropic/claude-opus-4-5", name: "Claude Opus 4.5" },
-  { id: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
+  { id: "anthropic/claude-opus-4-5", name: "Claude Opus 4.5", short: "Opus 4.5" },
+  { id: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5", short: "Sonnet 4.5" },
 ] as const;
 
 const DEFAULT_MODEL = AVAILABLE_MODELS[0].id;
@@ -178,6 +172,7 @@ export function FeatureChat({
   hasSavedSpec = false,
   onSessionReset
 }: FeatureChatProps) {
+  const { mode } = useMode();
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -256,6 +251,7 @@ export function FeatureChat({
         currentSpecMarkdown,
         featureTitle,
         thinkingEnabled,
+        viewMode: mode,
         onSpecGenerated: hasSavedSpec ? undefined : onSpecGenerated,
         onPendingChange: hasPendingChange ? undefined : onPendingChange,
         onWireframeGenerated
@@ -266,6 +262,7 @@ export function FeatureChat({
       currentSpecMarkdown,
       featureTitle,
       thinkingEnabled,
+      mode,
       hasSavedSpec,
       onSpecGenerated,
       hasPendingChange,
@@ -618,6 +615,11 @@ export function FeatureChat({
           const seenToolCalls = new Set<string>();
 
           const uniqueParts = message.parts.filter((part) => {
+            // First check if part should be shown based on mode (PM vs Dev)
+            if (!shouldShowMessagePart(part.type, mode)) {
+              return false;
+            }
+
             if (part.type === "text" && part.text) {
               if (seenTexts.has(part.text)) return false;
               seenTexts.add(part.text);
@@ -1001,7 +1003,7 @@ export function FeatureChat({
 
                 {/* Bottom toolbar - positioned inside container */}
                 <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-                  {/* Left: Thinking toggle + Image upload */}
+                  {/* Left: Thinking toggle + Model selector + Image upload */}
                   <div className="flex items-center gap-2">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <Switch
@@ -1012,25 +1014,19 @@ export function FeatureChat({
                       />
                       <span className="text-xs font-mono text-muted-foreground">Thinking</span>
                     </label>
-                    <Select value={selectedModel} onValueChange={setSelectedModel}>
-                      <SelectTrigger
-                        className="h-6 w-auto text-[10px] font-mono px-2 py-0 border-muted-foreground/30 bg-transparent gap-1"
-                        disabled={isLoading}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {AVAILABLE_MODELS.map((model) => (
-                          <SelectItem
-                            key={model.id}
-                            value={model.id}
-                            className="text-xs font-mono"
-                          >
-                            {model.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <button
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => {
+                        const currentIndex = AVAILABLE_MODELS.findIndex(m => m.id === selectedModel);
+                        const nextIndex = (currentIndex + 1) % AVAILABLE_MODELS.length;
+                        setSelectedModel(AVAILABLE_MODELS[nextIndex].id);
+                      }}
+                      className="h-6 px-2 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm transition-colors disabled:opacity-50"
+                      title={AVAILABLE_MODELS.find(m => m.id === selectedModel)?.name}
+                    >
+                      {AVAILABLE_MODELS.find(m => m.id === selectedModel)?.short}
+                    </button>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}

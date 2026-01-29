@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
 import { useTrackOpenPanel, useBackgroundStream } from "@/components/project/background-stream-context";
+import { ModeProvider, useMode } from "@/components/providers/mode-provider";
+import { ModeSwitch } from "@/components/feature/mode-switch";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -47,6 +49,12 @@ interface FeatureData {
   specMarkdown: string | null;
   wireframe: string | null;
   initialIdea: string | null;
+}
+
+// Small component that reads from ModeContext — must be rendered inside ModeProvider
+function FeatureHeaderModeToggle() {
+  const { mode, setMode } = useMode();
+  return <ModeSwitch mode={mode} onModeChange={setMode} />;
 }
 
 export function FeatureChatPanel({ featureId, projectId, project, onClose, onFeatureUpdated }: FeatureChatPanelProps) {
@@ -543,7 +551,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
               </div>
             </div>
           ) : feature ? (
-            <>
+            <ModeProvider featureId={feature.id}>
               {/* Header */}
               <div className="px-4 py-2 border-b border-border shrink-0">
                 <div className="flex items-center justify-between gap-2">
@@ -552,6 +560,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                     <Badge variant="outline" className="text-[10px] shrink-0">
                       {STATUS_LABELS[feature.status]}
                     </Badge>
+                    <FeatureHeaderModeToggle />
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {/* Status transition buttons */}
@@ -636,7 +645,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                 />
               </div>
 
-            </>
+            </ModeProvider>
           ) : (
             <div className="flex-1 flex flex-col">
               <div className="flex items-center justify-end px-4 py-3 border-b border-border">

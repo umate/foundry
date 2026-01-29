@@ -15,6 +15,7 @@ interface StreamOptions {
   currentSpecMarkdown?: string;
   featureTitle?: string;
   thinkingEnabled?: boolean;
+  viewMode?: "pm" | "dev";
   onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
   onWireframeGenerated?: (wireframe: string) => void;
@@ -151,6 +152,7 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
       messagesWithUser,
       options.currentSpecMarkdown,
       options.thinkingEnabled ?? false,
+      options.viewMode ?? "pm",
       {
         onStatusChange: (status) => {
           console.log(`[BackgroundContext] Status change for ${featureId}: ${status}`);

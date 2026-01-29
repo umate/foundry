@@ -62,6 +62,7 @@ export async function startStream(
   messages: DisplayMessage[],
   currentSpecMarkdown: string | undefined,
   thinkingEnabled: boolean,
+  viewMode: "pm" | "dev",
   callbacks: StreamCallbacks,
   abortController: AbortController
 ): Promise<void> {
@@ -103,7 +104,8 @@ export async function startStream(
       body: JSON.stringify({
         messages: apiMessages,
         currentSpecMarkdown,
-        thinkingEnabled
+        thinkingEnabled,
+        viewMode
       }),
       signal: abortController.signal
     });

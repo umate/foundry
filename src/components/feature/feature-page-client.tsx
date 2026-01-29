@@ -20,6 +20,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { EraserIcon } from '@phosphor-icons/react';
+import { ModeProvider, useMode } from '@/components/providers/mode-provider';
+import { ModeSwitch } from '@/components/feature/mode-switch';
 import type { Feature, FeatureMessage, Project } from '@/db/schema';
 import type { MDXEditorMethods } from '@mdxeditor/editor';
 
@@ -27,6 +29,12 @@ interface FeaturePageClientProps {
   feature: Feature;
   project: Project;
   initialMessages?: FeatureMessage[];
+}
+
+// Small component that reads from ModeContext — must be rendered inside ModeProvider
+function FeaturePageModeToggle() {
+  const { mode, setMode } = useMode();
+  return <ModeSwitch mode={mode} onModeChange={setMode} />;
 }
 
 export function FeaturePageClient({ feature, project, initialMessages = [] }: FeaturePageClientProps) {
@@ -313,24 +321,33 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
         </div>
 
         {/* Right Panel - Chat (40%) */}
-        <div className="w-[40%] bg-card flex flex-col">
-          <FeatureChat
-            key={messagesKey}
-            projectId={project.id}
-            featureId={feature.id}
-            initialIdea={currentInitialIdea || undefined}
-            initialMessages={currentMessages}
-            onSpecGenerated={handleSpecGenerated}
-            onPendingChange={handlePendingChange}
-            onAcceptChange={handleAcceptChange}
-            onRejectChange={handleRejectChange}
-            onWireframeGenerated={handleWireframeGenerated}
-            onSessionReset={handleSessionReset}
-            currentSpecMarkdown={specContent}
-            hasPendingChange={proposedMarkdown !== null}
-            hasSavedSpec={!!feature.specMarkdown}
-          />
-        </div>
+        <ModeProvider featureId={feature.id}>
+          <div className="w-[40%] bg-card flex flex-col">
+            {/* Chat header with mode toggle */}
+            <div className="px-4 py-2 border-b border-border shrink-0 flex items-center justify-between">
+              <span className="font-mono text-sm font-semibold uppercase tracking-wider">Chat</span>
+              <FeaturePageModeToggle />
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <FeatureChat
+                key={messagesKey}
+                projectId={project.id}
+                featureId={feature.id}
+                initialIdea={currentInitialIdea || undefined}
+                initialMessages={currentMessages}
+                onSpecGenerated={handleSpecGenerated}
+                onPendingChange={handlePendingChange}
+                onAcceptChange={handleAcceptChange}
+                onRejectChange={handleRejectChange}
+                onWireframeGenerated={handleWireframeGenerated}
+                onSessionReset={handleSessionReset}
+                currentSpecMarkdown={specContent}
+                hasPendingChange={proposedMarkdown !== null}
+                hasSavedSpec={!!feature.specMarkdown}
+              />
+            </div>
+          </div>
+        </ModeProvider>
       </main>
 
       <AddIdeaDialog

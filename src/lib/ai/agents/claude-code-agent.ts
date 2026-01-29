@@ -100,7 +100,8 @@ function buildSystemPrompt(
   project: ProjectContext,
   feature: FeatureContext,
   currentSpecMarkdown: string | null,
-  claudeMdContent: string | null
+  claudeMdContent: string | null,
+  viewMode: "pm" | "dev" = "pm"
 ): string {
   const claudeMdSection = claudeMdContent
     ? `## CODEBASE INSTRUCTIONS (from CLAUDE.md)
@@ -226,7 +227,25 @@ After calling \`AskUserQuestion\`, you MUST stop immediately and wait for the us
 - Do NOT make assumptions about what the user will answer
 - The tool will return with empty answers initially - this is expected
 - The user's actual answers will arrive in their next message
-- Only then should you continue with the next steps`;
+- Only then should you continue with the next steps${viewMode === "pm" ? `
+
+## COMMUNICATION STYLE (PM Mode)
+You are communicating with a product manager who may not have deep technical knowledge. Adjust your communication accordingly:
+- Use **clear, non-technical language** when explaining concepts
+- Focus on **user outcomes and business value** rather than implementation details
+- Avoid jargon like "API endpoints", "database migrations", "component architecture" unless specifically asked
+- When discussing technical constraints, explain them in terms of **user impact** (e.g., "This will take longer because..." rather than "The database schema requires...")
+- Keep responses **concise and action-oriented** - what decisions need to be made, not how things work under the hood
+- Frame questions around **user experience, scope, and priorities** rather than technical tradeoffs` : `
+
+## COMMUNICATION STYLE (Dev Mode)
+You are communicating with a developer who understands technical details. Be direct and technical:
+- Use **precise technical terminology** freely
+- Discuss **implementation details, architecture, and code patterns** when relevant
+- Reference **specific files, functions, and technical constraints**
+- Include **code snippets and technical examples** when helpful
+- Explain **technical tradeoffs** in depth (performance, maintainability, complexity)
+- Be thorough about **edge cases, error handling, and system integration**`}`;
 }
 
 // --- Message Formatting ---
@@ -346,11 +365,12 @@ export async function* createClaudeCodeStream(
   feature: FeatureContext,
   currentSpecMarkdown: string | null,
   messages: ChatMessage[],
-  thinkingEnabled: boolean = false
+  thinkingEnabled: boolean = false,
+  viewMode: "pm" | "dev" = "pm"
 ): AsyncGenerator<SDKMessage> {
   const foundryTools = createFoundryTools();
   const claudeMdContent = await readClaudeMd(project.repoPath);
-  const systemPrompt = buildSystemPrompt(project, feature, currentSpecMarkdown, claudeMdContent);
+  const systemPrompt = buildSystemPrompt(project, feature, currentSpecMarkdown, claudeMdContent, viewMode);
 
   // Configure allowed tools
   const allowedTools = [

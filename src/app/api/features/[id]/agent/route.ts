@@ -110,6 +110,7 @@ export async function POST(
   }> = body.messages || [];
   const currentSpecMarkdown: string | null = body.currentSpecMarkdown ?? null;
   const thinkingEnabled: boolean = body.thinkingEnabled ?? false;
+  const viewMode: "pm" | "dev" = body.viewMode === "dev" ? "dev" : "pm";
 
   if (!Array.isArray(rawMessages)) {
     return new Response(JSON.stringify({ error: "Messages array required" }), {
@@ -156,7 +157,8 @@ export async function POST(
           },
           currentSpecMarkdown,
           messages,
-          thinkingEnabled
+          thinkingEnabled,
+          viewMode
         )) {
           messageCount++;
           const msgType = (message as { type?: string }).type || "unknown";
