@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { PlusIcon, GearIcon, TrashIcon, GitDiffIcon } from "@phosphor-icons/react";
+import { PlusIcon, GearIcon, TrashIcon, GitDiffIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
 import { ThemeToggle } from "./theme-toggle";
@@ -41,6 +41,18 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
             </span>
           </>
         )}
+      </div>
+
+      {/* Center: Search Bar */}
+      <div className="flex items-center">
+        <div className="relative w-72">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
+          <input
+            type="text"
+            placeholder="Search features, tasks..."
+            className="w-full h-8 pl-9 pr-3 bg-muted/50 border border-foreground/15 rounded-md text-sm font-mono placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30 transition-colors"
+          />
+        </div>
       </div>
 
       {/* Right: Actions */}

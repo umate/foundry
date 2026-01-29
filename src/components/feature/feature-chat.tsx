@@ -42,6 +42,7 @@ import type { PendingImage } from "@/components/ui/image-upload";
 import { uploadImages, validateImageFile, type UploadedImage } from "@/lib/image-utils";
 import { shouldShowMessagePart, useMode } from "@/components/providers/mode-provider";
 import { SuggestedActions } from "@/components/feature/suggested-actions";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 // DB message content - stores full parts array (mirrors DisplayMessage.parts)
 type MessageContent = {
@@ -218,6 +219,7 @@ export function FeatureChat({
     messages: contextMessages,
     status,
     error,
+    contextUsage,
     sendMessage: contextSendMessage,
     stop,
     clearMessages,
@@ -303,6 +305,13 @@ export function FeatureChat({
   const hasMoreMessages = messages.length > visibleCount;
 
   const isLoading = status === "streaming";
+
+  // Context window usage percentage (available after first completed stream)
+  const contextPercentage = useMemo(() => {
+    if (!contextUsage || contextUsage.contextWindow === 0) return null;
+    const used = contextUsage.inputTokens + contextUsage.outputTokens;
+    return Math.round(Math.min((used / contextUsage.contextWindow) * 100, 100));
+  }, [contextUsage]);
 
   // Rotate thinking phrases while loading
   const thinkingPhrases = useMemo(
@@ -952,7 +961,7 @@ export function FeatureChat({
               onAction={handleSuggestedAction}
             />
             <form onSubmit={handleSubmit} className="px-3 pb-3">
-              <div className="relative rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring">
+              <div className="relative rounded-md border border-border bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
                 {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
@@ -1139,6 +1148,32 @@ export function FeatureChat({
                     )}
                   </div>
                 </div>
+
+                {/* Context window usage bar — track always visible, fill shows after first completed stream */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-border/80 overflow-hidden cursor-default">
+                      {contextPercentage !== null && (
+                        <div
+                          className={cn(
+                            "h-full transition-all duration-500 ease-out",
+                            contextPercentage < 50
+                              ? "bg-muted-foreground/40"
+                              : contextPercentage < 80
+                                ? "bg-secondary/60"
+                                : "bg-destructive/70"
+                          )}
+                          style={{ width: `${contextPercentage}%` }}
+                        />
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="font-mono text-xs">
+                    {contextPercentage !== null
+                      ? `Context: ${contextPercentage}% used${contextUsage ? ` (${Math.round((contextUsage.inputTokens + contextUsage.outputTokens) / 1000)}k / ${Math.round(contextUsage.contextWindow / 1000)}k tokens)` : ""}`
+                      : "Context window — updates when response completes"}
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </form>
           </>

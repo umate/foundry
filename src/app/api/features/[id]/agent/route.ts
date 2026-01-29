@@ -379,12 +379,29 @@ export async function POST(
               }
             }
           } else if (isResultMessage(message)) {
+            // Extract primary model usage for context window tracking
+            let contextUsage: { inputTokens: number; outputTokens: number; contextWindow: number } | undefined;
+            if (message.modelUsage) {
+              const entries = Object.values(message.modelUsage);
+              const primary = entries.reduce((best, curr) =>
+                curr.contextWindow > (best?.contextWindow ?? 0) ? curr : best
+              , entries[0]);
+              if (primary?.contextWindow) {
+                contextUsage = {
+                  inputTokens: primary.inputTokens,
+                  outputTokens: primary.outputTokens,
+                  contextWindow: primary.contextWindow,
+                };
+              }
+            }
+
             // Stream complete
             sendEvent({
               type: "done",
               result: message.subtype,
               cost: message.total_cost_usd,
-              turns: message.num_turns
+              turns: message.num_turns,
+              contextUsage,
             });
           } else {
             // Emit any other unhandled message types as raw

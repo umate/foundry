@@ -6,6 +6,12 @@ import type { DisplayMessage, MessagePart, ClarificationQuestion, TodoItem } fro
 
 export type ChatStatus = "idle" | "streaming" | "ready" | "error";
 
+export interface ContextUsage {
+  inputTokens: number;
+  outputTokens: number;
+  contextWindow: number;
+}
+
 interface SSEEvent {
   type: "text" | "activity" | "tool_use" | "tool_result" | "done" | "error" | "raw" | "file_search_result" | "file_read_result" | "file_write_result" | "file_edit_result" | "bash_result" | "tool_error" | "clarification" | "todo_list";
   content?: string;
@@ -33,6 +39,7 @@ interface SSEEvent {
   questions?: ClarificationQuestion[];
   todos?: TodoItem[];
   error?: string;
+  contextUsage?: ContextUsage;
 }
 
 export interface StreamCallbacks {
@@ -43,6 +50,7 @@ export interface StreamCallbacks {
   onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
   onWireframeGenerated?: (wireframe: string) => void;
+  onContextUsage?: (usage: ContextUsage) => void;
 }
 
 export interface StreamController {
@@ -381,6 +389,9 @@ export async function startStream(
                 break;
 
               case "done":
+                if (event.contextUsage && callbacks.onContextUsage) {
+                  callbacks.onContextUsage(event.contextUsage);
+                }
                 callbacks.onStatusChange("ready");
                 callbacks.onComplete();
                 break;

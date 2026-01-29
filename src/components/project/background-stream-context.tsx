@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useCallback, useRef, useState, useEffect } from "react";
-import { startStream, type ChatStatus } from "@/lib/stream-manager";
+import { startStream, type ChatStatus, type ContextUsage } from "@/lib/stream-manager";
 import type { DisplayMessage } from "@/lib/hooks/use-claude-code-chat";
 import { toast } from "sonner";
 
@@ -9,6 +9,7 @@ interface StreamState {
   status: ChatStatus;
   messages: DisplayMessage[];
   error: Error | null;
+  contextUsage: ContextUsage | null;
 }
 
 interface StreamOptions {
@@ -92,7 +93,7 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
   const updateStreamState = useCallback((featureId: string, update: Partial<StreamState>) => {
     setStreams(prev => {
       const newMap = new Map(prev);
-      const existing = newMap.get(featureId) || { status: "idle" as ChatStatus, messages: [], error: null };
+      const existing = newMap.get(featureId) || { status: "idle" as ChatStatus, messages: [], error: null, contextUsage: null };
       newMap.set(featureId, { ...existing, ...update });
       return newMap;
     });
@@ -188,7 +189,10 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
         },
         onSpecGenerated: options.onSpecGenerated,
         onPendingChange: options.onPendingChange,
-        onWireframeGenerated: options.onWireframeGenerated
+        onWireframeGenerated: options.onWireframeGenerated,
+        onContextUsage: (usage) => {
+          updateStreamState(featureId, { contextUsage: usage });
+        }
       },
       abortController
     );
@@ -290,6 +294,7 @@ export function useFeatureStream(featureId: string) {
     messages: streamState?.messages || [],
     status: streamState?.status || "idle",
     error: streamState?.error || null,
+    contextUsage: streamState?.contextUsage || null,
     isStreaming: context.isStreaming(featureId),
     sendMessage: (message: ChatMessageInput, options: StreamOptions) => {
       context.sendMessage(featureId, message, options);
