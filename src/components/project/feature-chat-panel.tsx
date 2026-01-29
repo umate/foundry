@@ -481,7 +481,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         {/* Code Review Panel - Collapsible side bar (only when current or done) */}
         {(feature?.status === "current" || feature?.status === "done") && (
           <CollapsibleSideBar
-            label="CODE REVIEW"
+            label="CODE"
             isExpanded={openPanel === 'code-review'}
             onToggle={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
             hasContent={true}

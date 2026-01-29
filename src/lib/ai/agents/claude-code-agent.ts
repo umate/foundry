@@ -366,7 +366,8 @@ export async function* createClaudeCodeStream(
   currentSpecMarkdown: string | null,
   messages: ChatMessage[],
   thinkingEnabled: boolean = false,
-  viewMode: "pm" | "dev" = "pm"
+  viewMode: "pm" | "dev" = "pm",
+  abortController?: AbortController
 ): AsyncGenerator<SDKMessage> {
   const foundryTools = createFoundryTools();
   const claudeMdContent = await readClaudeMd(project.repoPath);
@@ -391,6 +392,7 @@ export async function* createClaudeCodeStream(
     permissionMode: "default" as const, // Use default to enable canUseTool handler
     maxTurns: 50, // Increased from 12 to allow complex tasks to complete
     ...(thinkingEnabled && { thinkingBudget: 10000 }), // Enable extended thinking when toggle is on
+    ...(abortController && { abortController }), // Propagate abort signal to SDK
 
     // Handle AskUserQuestion permission - return empty answers so tool completes without error
     // The agent will wait for user's next message per system prompt instructions
@@ -468,8 +470,16 @@ export async function* createClaudeCodeStream(
   }
 
   // Yield messages as they stream
-  for await (const message of queryResult) {
-    yield message;
+  try {
+    for await (const message of queryResult) {
+      yield message;
+    }
+  } finally {
+    // Force-terminate the SDK subprocess only when aborted.
+    // On normal completion, the SDK handles its own cleanup.
+    if (abortController?.signal.aborted) {
+      queryResult.close();
+    }
   }
 }
 

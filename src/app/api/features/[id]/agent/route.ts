@@ -9,7 +9,9 @@ import {
 } from "@/lib/ai/agents/claude-code-agent";
 import { featureRepository } from "@/db/repositories/feature.repository";
 import { projectRepository } from "@/db/repositories/project.repository";
+import { AbortError } from "@anthropic-ai/claude-agent-sdk";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import { registerAgentStream, unregisterAgentStream } from "@/lib/agent-abort-registry";
 
 /**
  * Transform Claude Code SDK messages to a format compatible with the UI.
@@ -126,14 +128,33 @@ export async function POST(
     images: m.images
   }));
 
+  // Create an AbortController for the SDK query, wired to client disconnect
+  const sdkAbortController = new AbortController();
+  const onClientDisconnect = () => {
+    console.log("[Agent] Client disconnected, aborting SDK query");
+    sdkAbortController.abort();
+  };
+  if (req.signal.aborted) {
+    return new Response(null, { status: 499 });
+  }
+  req.signal.addEventListener("abort", onClientDisconnect, { once: true });
+
+  // Register so the abort endpoint can find this controller
+  registerAgentStream(featureId, sdkAbortController);
+
   // Create SSE stream
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       const sendEvent = (data: unknown) => {
+        if (sdkAbortController.signal.aborted) return;
         const eventType = (data as { type?: string }).type || "unknown";
         console.log(`[Agent] Sending SSE event: type=${eventType}`);
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          // Stream controller may already be closed
+        }
       };
 
       try {
@@ -158,7 +179,8 @@ export async function POST(
           currentSpecMarkdown,
           messages,
           thinkingEnabled,
-          viewMode
+          viewMode,
+          sdkAbortController
         )) {
           messageCount++;
           const msgType = (message as { type?: string }).type || "unknown";
@@ -393,16 +415,33 @@ export async function POST(
         }
         console.log(`[Agent] Stream loop ended. Total messages processed: ${messageCount}`);
       } catch (error) {
-        console.error("[Agent] Claude Code agent error:", error);
-        sendEvent({
-          type: "error",
-          message: error instanceof Error ? error.message : "Unknown error"
-        });
-        // Always send done after error so client doesn't stay stuck in streaming state
-        sendEvent({ type: "done", result: "error" });
+        const isAbort = error instanceof AbortError ||
+          (error instanceof Error && error.name === "AbortError") ||
+          sdkAbortController.signal.aborted;
+
+        if (isAbort) {
+          console.log("[Agent] Stream aborted (client disconnected)");
+        } else {
+          console.error("[Agent] Claude Code agent error:", error);
+          sendEvent({
+            type: "error",
+            message: error instanceof Error ? error.message : "Unknown error"
+          });
+          sendEvent({ type: "done", result: "error" });
+        }
       } finally {
-        controller.close();
+        unregisterAgentStream(featureId);
+        req.signal.removeEventListener("abort", onClientDisconnect);
+        try {
+          controller.close();
+        } catch {
+          // Controller may already be closed
+        }
       }
+    },
+    cancel() {
+      console.log("[Agent] ReadableStream cancelled");
+      sdkAbortController.abort();
     }
   });
 

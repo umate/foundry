@@ -207,6 +207,8 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
       abortControllersRef.current.delete(featureId);
       updateStreamState(featureId, { status: "ready" });
     }
+    // Tell the server to abort the SDK subprocess
+    fetch(`/api/features/${featureId}/agent/abort`, { method: "POST" }).catch(() => {});
   }, [updateStreamState]);
 
   // Clear a stream's state
