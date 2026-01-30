@@ -67,25 +67,27 @@ Foundry does.
 ## Quick Start
 
 ```bash
+bunx foundry-ai
+```
+
+On first run, Foundry will clone the repository, prompt for your [Vercel AI Gateway](https://vercel.com/ai-gateway) key, run database migrations, and start the dev server. That's it.
+
+Vercel AI Gateway routes requests to multiple AI providers (Claude, Gemini) through a single API key. You can sign up for free at [vercel.com/ai-gateway](https://vercel.com/ai-gateway).
+
+### Manual setup
+
+```bash
 git clone https://github.com/artinnok/foundry.git
 cd foundry
-```
-
-Foundry uses [Vercel AI Gateway](https://vercel.com/ai-gateway) to route requests to multiple AI providers (Claude, Gemini) through a single API key. You can sign up for free at [vercel.com/ai-gateway](https://vercel.com/ai-gateway).
-
-Create a `.env.local` file:
-
-```bash
-AI_GATEWAY_API_KEY="your-vercel-ai-gateway-key"
-```
-
-Then run `./start.command` — it pulls latest changes, installs dependencies, runs migrations, and starts the dev server:
-
-```bash
 ./start.command
 ```
 
-Open [localhost:5005](http://localhost:5005). Create a project. Paste an idea. Watch it decompose.
+### Options
+
+```bash
+bunx foundry-ai --port 3000     # Custom port (default: 5005)
+bunx foundry-ai --dir ~/apps    # Clone to a specific directory
+```
 
 ### Prerequisites
 
