@@ -11,4 +11,4 @@ echo "🗄️ Running migrations..."
 bun db:migrate
 
 echo "🚀 Starting server..."
-bun dev --port 3500
+bun dev --port 5005

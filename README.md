@@ -69,28 +69,28 @@ Foundry does.
 ```bash
 git clone https://github.com/artinnok/foundry.git
 cd foundry
-bun install
 ```
+
+Foundry uses [Vercel AI Gateway](https://vercel.com/ai-gateway) to route requests to multiple AI providers (Claude, Gemini) through a single API key. You can sign up for free at [vercel.com/ai-gateway](https://vercel.com/ai-gateway).
 
 Create a `.env.local` file:
 
 ```bash
-AI_GATEWAY_API_KEY="your-api-key"
+AI_GATEWAY_API_KEY="your-vercel-ai-gateway-key"
 ```
 
-Then run:
+Then run `./start.command` — it pulls latest changes, installs dependencies, runs migrations, and starts the dev server:
 
 ```bash
-bun db:migrate
-bun dev
+./start.command
 ```
 
-Open [localhost:3000](http://localhost:3000). Create a project. Paste an idea. Watch it decompose.
+Open [localhost:5005](http://localhost:5005). Create a project. Paste an idea. Watch it decompose.
 
 ### Prerequisites
 
 - [Bun](https://bun.sh) v1.0+
-- An AI gateway API key
+- A [Vercel AI Gateway](https://vercel.com/ai-gateway) API key (free tier available)
 - That's it. SQLite is embedded. No Docker. No Postgres. No Redis.
 
 ---
