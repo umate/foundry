@@ -1,8 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { PlusIcon } from '@phosphor-icons/react';
 import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
+import { Button } from '@/components/ui/button';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -10,14 +12,6 @@ export default function NewProjectPage() {
 
   const handleSuccess = (projectId: string) => {
     router.push(`/projects/${projectId}`);
-  };
-
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (!isOpen) {
-      // If dialog is closed without creating, go back
-      router.back();
-    }
   };
 
   return (
@@ -38,12 +32,16 @@ export default function NewProjectPage() {
           <p className="text-muted-foreground mb-4">
             Create your first project to get started
           </p>
+          <Button onClick={() => setOpen(true)}>
+            <PlusIcon weight="bold" className="h-4 w-4" />
+            New Project
+          </Button>
         </div>
       </div>
 
       <CreateProjectDialog
         open={open}
-        onOpenChange={handleOpenChange}
+        onOpenChange={setOpen}
         onSuccess={handleSuccess}
       />
     </div>
