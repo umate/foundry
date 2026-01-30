@@ -128,8 +128,8 @@ export function EditFeatureDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="idea">Idea</SelectItem>
-                <SelectItem value="scoped">Scoped</SelectItem>
-                <SelectItem value="current">Current</SelectItem>
+                <SelectItem value="scoped">Defined</SelectItem>
+                <SelectItem value="current">In Progress</SelectItem>
                 <SelectItem value="done">Done</SelectItem>
               </SelectContent>
             </Select>

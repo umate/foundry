@@ -94,7 +94,7 @@ export function useSuggestedActions({
       if (mode === "dev" && !codeStarted) {
         return [{
           id: "implement",
-          label: "Implement",
+          label: "Start Implementation",
           message: "Implement this feature based on the current spec. Start with the highest-priority tasks.",
           triggersImplementation: true,
         }];
@@ -105,7 +105,7 @@ export function useSuggestedActions({
     // After code activity in dev
     if (ctx === "code-activity" && mode === "dev") {
       return [
-        { id: "continue", label: "Continue", message: "Continue with the next implementation task." },
+        { id: "continue", label: "Continue Building", message: "Continue with the next implementation task." },
       ];
     }
 
@@ -113,12 +113,12 @@ export function useSuggestedActions({
     if (isEmpty) {
       if (!hasSavedSpec) {
         return [
-          { id: "gen-spec", label: "Generate Spec", message: "Based on the feature title and description, generate a spec for this feature." },
+          { id: "gen-spec", label: "Draft Requirements", message: "Based on the feature title and description, generate a spec for this feature." },
         ];
       }
       if (mode === "dev") {
         return [
-          { id: "implement", label: "Implement", message: "Implement this feature based on the current spec. Start with the highest-priority tasks.", triggersImplementation: true },
+          { id: "implement", label: "Start Implementation", message: "Implement this feature based on the current spec. Start with the highest-priority tasks.", triggersImplementation: true },
         ];
       }
       return [];
@@ -127,14 +127,14 @@ export function useSuggestedActions({
     // General conversation
     if (!hasSavedSpec) {
       return [
-        { id: "gen-spec", label: "Generate Spec", message: "Based on everything discussed so far, please generate the spec for this feature." },
+        { id: "gen-spec", label: "Draft Requirements", message: "Based on everything discussed so far, please generate the spec for this feature." },
       ];
     }
 
     if (hasSavedSpec && mode === "dev" && !codeStarted) {
       return [{
         id: "implement",
-        label: "Implement",
+        label: "Start Implementation",
         message: "Implement this feature based on the current spec. Start with the highest-priority tasks.",
         triggersImplementation: true,
       }];
@@ -142,7 +142,7 @@ export function useSuggestedActions({
 
     if (codeStarted && mode === "dev") {
       return [
-        { id: "continue", label: "Continue", message: "Continue implementing. What's the next task?" },
+        { id: "continue", label: "Continue Building", message: "Continue implementing. What's the next task?" },
       ];
     }
 

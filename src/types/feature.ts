@@ -34,8 +34,8 @@ export interface FeaturesByStatus {
 
 export const STATUS_LABELS: Record<FeatureStatus, string> = {
   idea: 'Idea',
-  scoped: 'Scoped',
-  current: 'Current',
+  scoped: 'Defined',
+  current: 'In Progress',
   done: 'Done',
 };
 

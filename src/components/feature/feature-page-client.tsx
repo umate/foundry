@@ -244,7 +244,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'spec' | 'wireframe')} className="flex flex-col h-full gap-0">
               <div className="border-b border-border px-4 py-2 flex items-center justify-between">
                 <TabsList>
-                  <TabsTrigger value="spec">Spec</TabsTrigger>
+                  <TabsTrigger value="spec">Requirements</TabsTrigger>
                   <TabsTrigger value="wireframe">Wireframe</TabsTrigger>
                 </TabsList>
                 {specContent && (
@@ -253,7 +253,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
                     size="icon"
                     onClick={() => setShowDeleteSpecDialog(true)}
                     className="size-8 text-muted-foreground hover:text-destructive"
-                    title="Clear spec"
+                    title="Clear requirements"
                   >
                     <EraserIcon weight="bold" className="size-4" />
                   </Button>
@@ -265,7 +265,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
                   content={proposedMarkdown ?? specContent}
                   onChange={handleContentChange}
                   isLocked={isLocked}
-                  placeholder="The AI will generate a spec here based on your conversation..."
+                  placeholder="AI-drafted requirements will appear here as you chat..."
                   saveStatus={saveStatus}
                   diffMarkdown={originalMarkdown ?? undefined}
                   viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
@@ -286,13 +286,13 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
               {/* Header with delete button when spec exists */}
               {specContent && (
                 <div className="border-b border-border px-4 py-2 flex items-center justify-between">
-                  <span className="font-mono text-sm font-semibold uppercase tracking-wider">Spec</span>
+                  <span className="font-mono text-sm font-semibold uppercase tracking-wider">Requirements</span>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowDeleteSpecDialog(true)}
                     className="size-8 text-muted-foreground hover:text-destructive"
-                    title="Clear spec"
+                    title="Clear requirements"
                   >
                     <EraserIcon weight="bold" className="size-4" />
                   </Button>
@@ -304,7 +304,7 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
                   content={proposedMarkdown ?? specContent}
                   onChange={handleContentChange}
                   isLocked={isLocked}
-                  placeholder="The AI will generate a spec here based on your conversation..."
+                  placeholder="AI-drafted requirements will appear here as you chat..."
                   saveStatus={saveStatus}
                   diffMarkdown={originalMarkdown ?? undefined}
                   viewMode={proposedMarkdown ? 'diff' : 'rich-text'}
@@ -380,9 +380,9 @@ export function FeaturePageClient({ feature, project, initialMessages = [] }: Fe
       <AlertDialog open={showDeleteSpecDialog} onOpenChange={setShowDeleteSpecDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear Specification?</AlertDialogTitle>
+            <AlertDialogTitle>Clear Requirements?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will clear the spec and wireframe for this feature. Your chat history will be preserved.
+              This will clear the requirements and wireframe for this feature. Your chat history will be preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

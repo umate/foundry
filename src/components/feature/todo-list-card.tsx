@@ -11,7 +11,7 @@ export function TodoListCard({ todos }: TodoListCardProps) {
   return (
     <div className="rounded-md border border-border bg-card p-3 space-y-2">
       <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-        Tasks
+        Checklist
       </div>
       <div className="space-y-1">
         {todos.map((todo, i) => (

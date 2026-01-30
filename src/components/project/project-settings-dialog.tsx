@@ -305,10 +305,10 @@ Please:
             {apiKey && (
               <div className="space-y-2">
                 <label className="text-sm font-medium font-mono uppercase tracking-wider">
-                  Coding Engine Instructions
+                  AI Coding Setup
                 </label>
                 <p className="text-xs text-muted-foreground">
-                  Copy this prompt to your coding agent (Claude Code, Cursor, etc.)
+                  Copy this prompt to your AI coding tool (Claude Code, Cursor, etc.)
                 </p>
                 <div className="relative">
                   <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto whitespace-pre-wrap max-h-48">

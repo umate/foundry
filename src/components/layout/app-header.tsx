@@ -49,7 +49,7 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-foreground/40" />
           <input
             type="text"
-            placeholder="Search features, tasks..."
+            placeholder="Search features..."
             className="w-full h-8 pl-9 pr-3 bg-muted/50 border border-foreground/15 rounded-md text-sm font-mono placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30 transition-colors"
           />
         </div>

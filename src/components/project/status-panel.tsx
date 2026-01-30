@@ -181,7 +181,7 @@ export function StatusPanel({
         {features.length === 0 ? (
           <div className="p-4 text-center">
             <p className="text-xs text-muted-foreground font-mono">
-              No features
+              No features yet
             </p>
           </div>
         ) : (

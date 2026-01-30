@@ -16,11 +16,11 @@ export function PendingChangeCard({ changeSummary, onAccept, onReject }: Pending
         <GitDiff weight="bold" className="size-5 text-secondary mt-0.5 shrink-0" />
         <div className="space-y-1 min-w-0">
           <div className="text-xs font-bold uppercase tracking-wider text-secondary">
-            Proposed Changes
+            Suggested Edits
           </div>
           <p className="text-sm text-foreground">{changeSummary}</p>
           <p className="text-xs text-muted-foreground">
-            Review the diff in the editor, then accept or reject.
+            Review the changes in the editor, then accept or reject.
           </p>
         </div>
       </div>

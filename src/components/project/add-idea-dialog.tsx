@@ -194,13 +194,13 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
                 value={ideaText}
                 onChange={(e) => setIdeaText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="I want to add a feature that..."
+                placeholder="Describe what you'd like to build..."
                 required
                 className="resize-none min-h-[40vh]"
               />
             </ImageDropzone>
             <p className="text-xs text-muted-foreground">
-              Be as detailed or brief as you like. The AI will help you flesh it out.
+              Be as detailed or brief as you like. AI will help you shape the requirements.
               Drag & drop or paste images to include visual context.
             </p>
           </div>
@@ -228,7 +228,7 @@ export function AddIdeaDialog({ open, onOpenChange, projectId, onSuccess, onFeat
               disabled={loading || !ideaText.trim()}
               shortcut={{ key: "enter", meta: true }}
             >
-              {loadingAction === "refine" ? "Creating..." : "Add & Refine"}
+              {loadingAction === "refine" ? "Creating..." : "Add & Refine with AI"}
             </Button>
           </DialogFooter>
         </form>

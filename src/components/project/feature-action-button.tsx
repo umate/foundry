@@ -120,10 +120,10 @@ function getButtonConfig(status: string, hasChat: boolean) {
   switch (status) {
     case 'idea':
       return hasChat
-        ? { label: 'Scope', icon: <Compass weight="bold" className="size-3" />, action: 'continue', variant: 'secondary' as const }
-        : { label: 'Discover', icon: <Compass weight="bold" className="size-3" />, action: 'discover', variant: 'secondary' as const };
+        ? { label: 'Continue Refining', icon: <Compass weight="bold" className="size-3" />, action: 'continue', variant: 'secondary' as const }
+        : { label: 'Explore with AI', icon: <Compass weight="bold" className="size-3" />, action: 'discover', variant: 'secondary' as const };
     case 'scoped':
-      return { label: 'Build', icon: <Rocket weight="bold" className="size-3" />, action: 'build', variant: 'secondary' as const };
+      return { label: 'Start Building', icon: <Rocket weight="bold" className="size-3" />, action: 'build', variant: 'secondary' as const };
     case 'current':
       return { label: 'Done', icon: <Check weight="bold" className="size-3" />, action: 'done', variant: 'secondary' as const };
     default:
