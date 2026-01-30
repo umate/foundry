@@ -34,7 +34,7 @@ This is a Next.js 16 App Router project using React 19 with a custom ShadCN UI d
 - **UI Components**: ShadCN UI with heavy customizations (`src/components/ui/`)
 - **Styling**: Tailwind CSS v4 with CSS variables for theming
 - **Icons**: Phosphor Icons (`@phosphor-icons/react`), NOT Lucide
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: SQLite (via `bun:sqlite`) with Drizzle ORM — stored at `data/foundry.db`
 - **Runtime**: Bun
 
 ### Path Aliases
