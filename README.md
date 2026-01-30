@@ -77,7 +77,7 @@ Vercel AI Gateway routes requests to multiple AI providers (Claude, Gemini) thro
 ### Manual setup
 
 ```bash
-git clone https://github.com/artinnok/foundry.git
+git clone https://github.com/umate/foundry.git
 cd foundry
 ./start.command
 ```
