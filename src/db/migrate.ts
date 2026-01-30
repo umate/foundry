@@ -1,23 +1,24 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import postgres from 'postgres';
-import { env } from '@/lib/env';
+import { Database } from 'bun:sqlite';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
+import path from 'path';
+import fs from 'fs';
 
-async function runMigrations() {
-  console.log('Running migrations...');
+const dbPath = path.join(process.cwd(), 'data', 'foundry.db');
 
-  const migrationClient = postgres(env.DATABASE_URL, { max: 1 });
-  const db = drizzle(migrationClient);
+// Ensure data directory exists
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-  await migrate(db, { migrationsFolder: './drizzle/migrations' });
+console.log('Running migrations...');
 
-  await migrationClient.end();
+const sqlite = new Database(dbPath);
+sqlite.exec('PRAGMA journal_mode = WAL;');
+sqlite.exec('PRAGMA foreign_keys = ON;');
 
-  console.log('Migrations completed!');
-  process.exit(0);
-}
+const db = drizzle(sqlite);
 
-runMigrations().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+migrate(db, { migrationsFolder: './drizzle/migrations' });
+
+sqlite.close();
+
+console.log('Migrations completed!');

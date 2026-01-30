@@ -54,7 +54,7 @@ export class FeatureMessageRepository {
     const counts = await db
       .select({
         featureId: schema.featureMessages.featureId,
-        count: sql<number>`count(*)::int`,
+        count: sql<number>`count(*)`,
       })
       .from(schema.featureMessages)
       .where(inArray(schema.featureMessages.featureId, featureIds))
