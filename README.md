@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/foundry-gh-cover.png" alt="Foundry" width="100%" />
+  <img src="docs/assets/foundry-gh-cover.jpg" alt="Foundry" width="100%" />
 </p>
 
 ---
