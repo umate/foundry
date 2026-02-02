@@ -893,12 +893,17 @@ export function FeatureChat({
 
                   // Render clarification questions from AskUserQuestion tool
                   if (part.type === "clarification") {
+                    // Disable if already answered (a user message exists after this assistant message)
+                    const msgIdx = messages.findIndex(m => m.id === message.id);
+                    const wasAnswered = msgIdx >= 0 &&
+                      messages.slice(msgIdx + 1).some(m => m.role === "user");
+
                     return (
                       <ClarificationCard
                         key={`${message.id}-${i}`}
                         questions={part.questions}
                         onSubmit={(responses) => handleClarificationSubmit(responses, part.questions)}
-                        disabled={isLoading}
+                        disabled={wasAnswered}
                       />
                     );
                   }

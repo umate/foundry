@@ -46,7 +46,7 @@ export interface StreamCallbacks {
   onStatusChange: (status: ChatStatus) => void;
   onMessagesUpdate: (messages: DisplayMessage[]) => void;
   onError: (error: Error) => void;
-  onComplete: () => void;
+  onComplete: (result?: string) => void;
   onSpecGenerated?: (markdown: string) => void;
   onPendingChange?: (markdown: string, changeSummary: string) => void;
   onWireframeGenerated?: (wireframe: string) => void;
@@ -127,6 +127,9 @@ export async function startStream(
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+
+    // Guard against double onComplete (done SSE event + reader EOF)
+    let completed = false;
 
     // Create assistant message
     const assistantId = generateId();
@@ -389,11 +392,13 @@ export async function startStream(
                 break;
 
               case "done":
+                if (completed) break;
+                completed = true;
                 if (event.contextUsage && callbacks.onContextUsage) {
                   callbacks.onContextUsage(event.contextUsage);
                 }
                 callbacks.onStatusChange("ready");
-                callbacks.onComplete();
+                callbacks.onComplete(event.result);
                 break;
 
               case "error":
@@ -415,8 +420,10 @@ export async function startStream(
       }
     }
 
-    callbacks.onStatusChange("ready");
-    callbacks.onComplete();
+    if (!completed) {
+      callbacks.onStatusChange("ready");
+      callbacks.onComplete();
+    }
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       callbacks.onStatusChange("ready");

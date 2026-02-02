@@ -22,6 +22,9 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
   const [selections, setSelections] = useState<Map<number, string | string[]>>(new Map());
   const [otherText, setOtherText] = useState<Map<number, string>>(new Map());
   const [activeTab, setActiveTab] = useState("0");
+  const [submitted, setSubmitted] = useState(false);
+
+  const isDisabled = disabled || submitted;
 
   const currentIndex = parseInt(activeTab, 10);
   const isLastQuestion = currentIndex === questions.length - 1;
@@ -71,6 +74,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
 
     // Single question → submit immediately
     if (questions.length === 1) {
+      setSubmitted(true);
       onSubmit(new Map([[0, optionLabel]]));
       return;
     }
@@ -110,6 +114,8 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
   };
 
   const handleSubmit = () => {
+    if (submitted) return;
+
     // Build final responses with "Other" text resolved
     const finalResponses = new Map<number, string | string[]>();
 
@@ -126,6 +132,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
       }
     });
 
+    setSubmitted(true);
     onSubmit(finalResponses);
   };
 
@@ -146,7 +153,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
           selection={selections.get(0)}
           onSingleSelect={handleSingleSelect}
           onMultiSelect={handleMultiSelect}
-          disabled={disabled}
+          disabled={isDisabled}
         />
 
         {isOtherSelected && (
@@ -154,7 +161,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
             placeholder="Type your answer..."
             value={otherText.get(0) || ""}
             onChange={(e) => handleOtherTextChange(0, e.target.value)}
-            disabled={disabled}
+            disabled={isDisabled}
             className="text-sm"
             autoFocus
           />
@@ -163,7 +170,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
         {(question.multiSelect || isOtherSelected) && (
           <Button
             onClick={handleSubmit}
-            disabled={!isCurrentAnswered() || disabled}
+            disabled={!isCurrentAnswered() || isDisabled}
             className="w-full"
             size="sm"
           >
@@ -206,7 +213,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
                 selection={selections.get(questionIndex)}
                 onSingleSelect={handleSingleSelect}
                 onMultiSelect={handleMultiSelect}
-                disabled={disabled}
+                disabled={isDisabled}
               />
 
               {isOther && (
@@ -214,7 +221,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
                   placeholder="Type your answer..."
                   value={otherText.get(questionIndex) || ""}
                   onChange={(e) => handleOtherTextChange(questionIndex, e.target.value)}
-                  disabled={disabled}
+                  disabled={isDisabled}
                   className="text-sm"
                   autoFocus
                 />
@@ -228,7 +235,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
       {(currentQuestion?.multiSelect || isOtherSelected) && !isLastQuestion && (
         <Button
           onClick={handleNext}
-          disabled={!isCurrentAnswered() || disabled}
+          disabled={!isCurrentAnswered() || isDisabled}
           variant="outline"
           className="w-full"
           size="sm"
@@ -241,7 +248,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
       {isLastQuestion && (
         <Button
           onClick={handleSubmit}
-          disabled={!isAllAnswered || disabled}
+          disabled={!isAllAnswered || isDisabled}
           className="w-full"
           size="sm"
         >

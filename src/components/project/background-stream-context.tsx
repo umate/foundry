@@ -172,10 +172,25 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
             });
           }
         },
-        onComplete: () => {
-          // Show completion toast if panel is closed
-          if (!openPanelsRef.current.has(featureId)) {
-            const title = featureTitlesRef.current.get(featureId) || "Feature";
+        onComplete: (result?: string) => {
+          // Clean up abort controller
+          abortControllersRef.current.delete(featureId);
+
+          // Don't show toast if panel is open (user sees the state directly)
+          if (openPanelsRef.current.has(featureId)) return;
+
+          const title = featureTitlesRef.current.get(featureId) || "Feature";
+
+          if (result === "clarification_pending") {
+            // Agent is waiting for user input
+            toast.info(`"${title}" needs your input`, {
+              closeButton: true,
+              action: openFeaturePanelRef.current ? {
+                label: "Answer",
+                onClick: () => openFeaturePanelRef.current?.(featureId)
+              } : undefined
+            });
+          } else {
             toast.success(`Work completed for "${title}"`, {
               closeButton: true,
               action: openFeaturePanelRef.current ? {
@@ -184,8 +199,6 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
               } : undefined
             });
           }
-          // Clean up abort controller
-          abortControllersRef.current.delete(featureId);
         },
         onSpecGenerated: options.onSpecGenerated,
         onPendingChange: options.onPendingChange,

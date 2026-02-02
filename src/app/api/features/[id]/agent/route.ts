@@ -360,6 +360,12 @@ export async function POST(
                     }]
                   });
                 }
+
+                // Force-stop the SDK: the agent must wait for the user's response.
+                // Send done BEFORE aborting (sendEvent checks abort flag).
+                sendEvent({ type: "done", result: "clarification_pending" });
+                sdkAbortController.abort();
+                return; // finally block still runs: unregisters stream, closes controller
               } else if (toolCall.name === "TodoWrite") {
                 // Task tracking - emit as todo_list event
                 const input = toolCall.input as {
