@@ -82,6 +82,7 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
                   <>
                     <ArrowUpIcon weight="bold" className="size-3" />
                     <span className="font-mono text-xs uppercase tracking-wider">Push</span>
+                    <CircleIcon weight="fill" className="size-1.5 text-secondary" />
                     <span className="font-mono text-xs">{branchStatus.commitsAhead}</span>
                   </>
                 )}

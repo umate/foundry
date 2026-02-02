@@ -247,6 +247,19 @@ function ProjectPageContent({
     loadBranchStatus();
   }, [loadBranchStatus]);
 
+  // Refresh branch status when window regains focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadBranchStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [loadBranchStatus]);
+
   // Auto-pull when behind remote and tree is clean (one-shot per load)
   useEffect(() => {
     if (!branchStatus || autoPullAttemptedRef.current) return;
