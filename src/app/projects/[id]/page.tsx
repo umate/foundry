@@ -202,17 +202,27 @@ function ProjectPageContent({
   handleProjectUpdated: (updated: { id: string; name: string; description: string | null; stack: string | null; repoPath: string | null; widgetApiKey: string | null }) => void;
 }) {
   const { setOpenFeaturePanel } = useBackgroundStream();
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Register the callback to open feature panel from toast
   useEffect(() => {
     setOpenFeaturePanel(setSelectedFeatureId);
   }, [setOpenFeaturePanel, setSelectedFeatureId]);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   return (
     <div className="h-screen flex flex-col bg-background">
       <AppHeader
         currentProjectId={project.id}
         currentProjectName={project.name}
+        searchQuery={searchInput}
+        onSearchChange={setSearchInput}
         onAddIdea={() => setAddIdeaOpen(true)}
         onCreateProject={() => setCreateProjectOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -221,6 +231,7 @@ function ProjectPageContent({
 
       <PanelBoard
         features={project.features}
+        searchQuery={searchQuery}
         onFeatureUpdated={handleFeatureUpdated}
         onFeatureClick={handleFeatureClick}
         onAddIdea={() => setAddIdeaOpen(true)}

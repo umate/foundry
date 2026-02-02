@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { PlusIcon, GearIcon, TrashIcon, GitDiffIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { PlusIcon, GearIcon, TrashIcon, GitDiffIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
 import { ThemeToggle } from "./theme-toggle";
@@ -11,6 +11,8 @@ interface AppHeaderProps {
   currentProjectId?: string;
   currentProjectName?: string;
   featureName?: string;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   onAddIdea: () => void;
   onCreateProject: () => void;
   onOpenSettings?: () => void;
@@ -18,7 +20,7 @@ interface AppHeaderProps {
   onDeleteFeature?: () => void;
 }
 
-export function AppHeader({ currentProjectId, currentProjectName, featureName, onAddIdea, onCreateProject, onOpenSettings, onOpenCodeReview, onDeleteFeature }: AppHeaderProps) {
+export function AppHeader({ currentProjectId, currentProjectName, featureName, searchQuery, onSearchChange, onAddIdea, onCreateProject, onOpenSettings, onOpenCodeReview, onDeleteFeature }: AppHeaderProps) {
   return (
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
       {/* Left: Logo + Project Selector + Feature Breadcrumb */}
@@ -50,8 +52,18 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, o
           <input
             type="text"
             placeholder="Search features..."
-            className="w-full h-8 pl-9 pr-3 bg-muted/50 border border-foreground/15 rounded-md text-sm font-mono placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30 transition-colors"
+            value={searchQuery ?? ""}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            className="w-full h-8 pl-9 pr-8 bg-muted/50 border border-foreground/15 rounded-md text-sm font-mono placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30 transition-colors"
           />
+          {searchQuery && (
+            <button
+              onClick={() => onSearchChange?.("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-foreground/40 hover:text-foreground/70 transition-colors"
+            >
+              <XIcon className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
 
