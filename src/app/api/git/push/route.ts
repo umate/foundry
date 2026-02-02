@@ -2,46 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { getProjectWithRepo } from "@/lib/project/get-project-repo";
+import { getCurrentBranch, getRemotes } from "@/lib/git";
 
 const execAsync = promisify(exec);
 
 interface PushRequest {
   projectId: string;
-}
-
-interface RemoteInfo {
-  name: string;
-  url: string;
-}
-
-async function getRemotes(cwd: string): Promise<RemoteInfo[]> {
-  try {
-    const { stdout } = await execAsync("git remote -v", { cwd });
-    const lines = stdout.trim().split("\n").filter(Boolean);
-    const remotes: RemoteInfo[] = [];
-    const seen = new Set<string>();
-
-    for (const line of lines) {
-      const match = line.match(/^(\S+)\s+(\S+)\s+\(push\)$/);
-      if (match && !seen.has(match[1])) {
-        seen.add(match[1]);
-        remotes.push({ name: match[1], url: match[2] });
-      }
-    }
-
-    return remotes;
-  } catch {
-    return [];
-  }
-}
-
-async function getCurrentBranch(cwd: string): Promise<string | null> {
-  try {
-    const { stdout } = await execAsync("git branch --show-current", { cwd });
-    return stdout.trim() || null;
-  } catch {
-    return null;
-  }
 }
 
 export async function POST(request: NextRequest) {

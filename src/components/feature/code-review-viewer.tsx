@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ArrowsClockwise, WarningCircle, GitDiff, CaretRight, CaretDown, File, GitCommit, MagnifyingGlass } from "@phosphor-icons/react";
-import { CommitDialog } from "./commit-dialog";
+import { ArrowsClockwise, WarningCircle, GitDiff, CaretRight, CaretDown, File, MagnifyingGlass } from "@phosphor-icons/react";
+import { CommitForm } from "./commit-form";
 import { CodeReviewSuggestions, type Suggestion } from "./code-review-suggestions";
 import { useBackgroundStream } from "@/components/project/background-stream-context";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,8 @@ interface CodeReviewViewerProps {
   projectId: string;
   featureId?: string;
   onFeatureCompleted?: () => void;
+  hasRemote?: boolean;
+  onRefreshStatus?: () => void;
 }
 
 function DiffStats({ additions, deletions }: { additions: number; deletions: number }) {
@@ -122,12 +124,11 @@ function FileDiffItem({ file, isExpanded, onToggle }: { file: FileDiff; isExpand
   );
 }
 
-export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted }: CodeReviewViewerProps) {
+export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted, hasRemote, onRefreshStatus }: CodeReviewViewerProps) {
   const [data, setData] = useState<DiffResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
-  const [commitDialogOpen, setCommitDialogOpen] = useState(false);
 
   // Code review state
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -334,16 +335,6 @@ export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted }: C
             <span className="font-mono uppercase tracking-wider text-xs">Review</span>
           </Button>
           <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setCommitDialogOpen(true)}
-            className="h-7 gap-1.5"
-            disabled={!data || data.files.length === 0}
-          >
-            <GitCommit weight="bold" className="size-4" />
-            <span className="font-mono uppercase tracking-wider text-xs">Commit</span>
-          </Button>
-          <Button
             variant="ghost"
             size="icon"
             onClick={fetchDiff}
@@ -379,19 +370,25 @@ export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted }: C
         ))}
       </div>
 
-      <CommitDialog
-        open={commitDialogOpen}
-        onOpenChange={setCommitDialogOpen}
-        projectId={projectId}
-        featureId={featureId}
-        diffSummary={{
-          files: data?.files.length ?? 0,
-          additions: data?.totalAdditions ?? 0,
-          deletions: data?.totalDeletions ?? 0
-        }}
-        onSuccess={fetchDiff}
-        onFeatureCompleted={onFeatureCompleted}
-      />
+      {/* Inline commit form */}
+      {data && data.files.length > 0 && (
+        <CommitForm
+          projectId={projectId}
+          featureId={featureId}
+          diffSummary={{
+            files: data.files.length,
+            additions: data.totalAdditions,
+            deletions: data.totalDeletions,
+          }}
+          onSuccess={() => {
+            fetchDiff();
+            onRefreshStatus?.();
+          }}
+          onFeatureCompleted={onFeatureCompleted}
+          onPushSuccess={onRefreshStatus}
+          hasRemote={hasRemote}
+        />
+      )}
     </div>
   );
 }

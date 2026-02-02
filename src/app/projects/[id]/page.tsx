@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AppHeader } from '@/components/layout/app-header';
 import { PanelBoard } from '@/components/project/panel-board';
@@ -10,7 +10,11 @@ import { ProjectSettingsDialog } from '@/components/project/project-settings-dia
 import { FeatureChatPanel } from '@/components/project/feature-chat-panel';
 import { CodeReviewSheet } from '@/components/project/code-review-sheet';
 import { BackgroundStreamProvider, useBackgroundStream } from '@/components/project/background-stream-context';
+import { CommitDialog } from '@/components/feature/commit-dialog';
+import { UncommittedChangesDialog } from '@/components/layout/uncommitted-changes-dialog';
 import { FeaturesByStatus, Feature, mapDbStatusToUi } from '@/types/feature';
+import type { BranchStatus } from '@/components/layout/branch-switcher';
+import { toast } from 'sonner';
 
 interface ProjectData {
   id: string;
@@ -205,6 +209,15 @@ function ProjectPageContent({
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Branch management state
+  const [branchStatus, setBranchStatus] = useState<BranchStatus | null>(null);
+  const [uncommittedDialogOpen, setUncommittedDialogOpen] = useState(false);
+  const [pendingTargetBranch, setPendingTargetBranch] = useState<string | null>(null);
+  const [branchCommitDialogOpen, setBranchCommitDialogOpen] = useState(false);
+  const [branchDiffSummary, setBranchDiffSummary] = useState<{ files: number; additions: number; deletions: number }>({ files: 0, additions: 0, deletions: 0 });
+  const [isPushing, setIsPushing] = useState(false);
+  const autoPullAttemptedRef = useRef(false);
+
   // Register the callback to open feature panel from toast
   useEffect(() => {
     setOpenFeaturePanel(setSelectedFeatureId);
@@ -215,6 +228,152 @@ function ProjectPageContent({
     const timer = setTimeout(() => setSearchQuery(searchInput), 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  // Load branch status on mount and when project changes
+  const loadBranchStatus = useCallback(async () => {
+    if (!project.repoPath) return;
+    try {
+      const response = await fetch(`/api/git/status?projectId=${project.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBranchStatus(data);
+      }
+    } catch (error) {
+      console.error('Failed to load branch status:', error);
+    }
+  }, [project.id, project.repoPath]);
+
+  useEffect(() => {
+    loadBranchStatus();
+  }, [loadBranchStatus]);
+
+  // Auto-pull when behind remote and tree is clean (one-shot per load)
+  useEffect(() => {
+    if (!branchStatus || autoPullAttemptedRef.current) return;
+    if (
+      branchStatus.uncommittedCount === 0 &&
+      branchStatus.commitsBehind > 0 &&
+      branchStatus.hasRemote
+    ) {
+      autoPullAttemptedRef.current = true;
+      fetch('/api/git/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id }),
+      })
+        .then((response) => {
+          if (response.ok) {
+            loadBranchStatus();
+          }
+        })
+        .catch(() => {
+          // Silent failure — auto-pull is best-effort
+        });
+    }
+  }, [branchStatus, project.id, loadBranchStatus]);
+
+  // Handle push from header button
+  const handlePush = useCallback(async () => {
+    if (isPushing) return;
+    setIsPushing(true);
+    try {
+      const response = await fetch('/api/git/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      if (response.ok) {
+        toast.success('Pushed to remote');
+        loadBranchStatus();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to push');
+      }
+    } catch {
+      toast.error('Failed to push');
+    } finally {
+      setIsPushing(false);
+    }
+  }, [isPushing, project.id, loadBranchStatus]);
+
+  // Handle "needs commit" from branch switcher (uncommitted changes guard)
+  const handleBranchNeedsCommit = useCallback((targetBranch: string) => {
+    setPendingTargetBranch(targetBranch);
+    setUncommittedDialogOpen(true);
+  }, []);
+
+  // Handle "commit first" from the uncommitted changes dialog
+  const handleCommitFirst = useCallback(async () => {
+    setUncommittedDialogOpen(false);
+    // Fetch diff summary for the commit dialog
+    try {
+      const response = await fetch(`/api/git/diff?projectId=${project.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBranchDiffSummary({
+          files: data.files?.length ?? 0,
+          additions: data.totalAdditions ?? 0,
+          deletions: data.totalDeletions ?? 0,
+        });
+        setBranchCommitDialogOpen(true);
+      } else {
+        toast.error('Failed to load changes');
+      }
+    } catch {
+      toast.error('Failed to load changes');
+    }
+  }, [project.id]);
+
+  // Handle after "discard and switch" from the uncommitted changes dialog
+  const handleDiscardAndSwitch = useCallback(async () => {
+    if (!pendingTargetBranch) return;
+    setUncommittedDialogOpen(false);
+    try {
+      const response = await fetch('/api/git/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, branch: pendingTargetBranch }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Switched to ${data.branch}`);
+        loadBranchStatus();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to switch branch');
+      }
+    } catch {
+      toast.error('Failed to switch branch');
+    } finally {
+      setPendingTargetBranch(null);
+    }
+  }, [pendingTargetBranch, project.id, loadBranchStatus]);
+
+  // Handle after commit succeeds in the branch commit dialog — auto-checkout pending branch
+  const handleBranchCommitSuccess = useCallback(async () => {
+    setBranchCommitDialogOpen(false);
+    if (pendingTargetBranch) {
+      try {
+        const response = await fetch('/api/git/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId: project.id, branch: pendingTargetBranch }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          toast.success(`Committed and switched to ${data.branch}`);
+        } else {
+          const error = await response.json();
+          toast.error(error.error || 'Committed, but failed to switch branch');
+        }
+      } catch {
+        toast.error('Committed, but failed to switch branch');
+      } finally {
+        setPendingTargetBranch(null);
+      }
+    }
+    loadBranchStatus();
+  }, [pendingTargetBranch, project.id, loadBranchStatus]);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -227,6 +386,12 @@ function ProjectPageContent({
         onCreateProject={() => setCreateProjectOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenCodeReview={() => setCodeReviewOpen(true)}
+        repoPath={project.repoPath}
+        branchStatus={branchStatus}
+        onRefreshBranchStatus={loadBranchStatus}
+        onBranchNeedsCommit={handleBranchNeedsCommit}
+        onPush={handlePush}
+        isPushing={isPushing}
       />
 
       <PanelBoard
@@ -262,6 +427,8 @@ function ProjectPageContent({
         open={codeReviewOpen}
         onOpenChange={setCodeReviewOpen}
         projectId={project.id}
+        hasRemote={branchStatus?.hasRemote}
+        onRefreshStatus={loadBranchStatus}
       />
 
       <FeatureChatPanel
@@ -274,6 +441,24 @@ function ProjectPageContent({
         }}
         onClose={handlePanelClose}
         onFeatureUpdated={handleFeatureUpdated}
+      />
+
+      {/* Branch management dialogs */}
+      <UncommittedChangesDialog
+        open={uncommittedDialogOpen}
+        onOpenChange={setUncommittedDialogOpen}
+        targetBranch={pendingTargetBranch || ''}
+        projectId={project.id}
+        onCommitFirst={handleCommitFirst}
+        onDiscardAndSwitch={handleDiscardAndSwitch}
+      />
+
+      <CommitDialog
+        open={branchCommitDialogOpen}
+        onOpenChange={setBranchCommitDialogOpen}
+        projectId={project.id}
+        diffSummary={branchDiffSummary}
+        onSuccess={handleBranchCommitSuccess}
       />
     </div>
   );

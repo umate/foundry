@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { PlusIcon, GearIcon, TrashIcon, GitDiffIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
+import { PlusIcon, GearIcon, TrashIcon, MagnifyingGlassIcon, XIcon, CircleIcon, ArrowUpIcon, SpinnerGapIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
 import { ThemeToggle } from "./theme-toggle";
+import { BranchSwitcher, type BranchStatus } from "./branch-switcher";
 
 interface AppHeaderProps {
   currentProjectId?: string;
@@ -18,12 +19,18 @@ interface AppHeaderProps {
   onOpenSettings?: () => void;
   onOpenCodeReview?: () => void;
   onDeleteFeature?: () => void;
+  repoPath?: string | null;
+  branchStatus?: BranchStatus | null;
+  onRefreshBranchStatus?: () => void;
+  onBranchNeedsCommit?: (targetBranch: string) => void;
+  onPush?: () => void;
+  isPushing?: boolean;
 }
 
-export function AppHeader({ currentProjectId, currentProjectName, featureName, searchQuery, onSearchChange, onAddIdea, onCreateProject, onOpenSettings, onOpenCodeReview, onDeleteFeature }: AppHeaderProps) {
+export function AppHeader({ currentProjectId, currentProjectName, featureName, searchQuery, onSearchChange, onAddIdea, onCreateProject, onOpenSettings, onOpenCodeReview, onDeleteFeature, repoPath, branchStatus, onRefreshBranchStatus, onBranchNeedsCommit, onPush, isPushing }: AppHeaderProps) {
   return (
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
-      {/* Left: Logo + Project Selector + Feature Breadcrumb */}
+      {/* Left: Logo + Project Selector + Git Controls + Feature Breadcrumb */}
       <div className="flex items-center gap-3">
         <Link href="/" className="hover:opacity-80 transition-opacity">
           <Image src="/foundry-logo-full.png" alt="Foundry" width={100} height={24} className="h-6 w-auto dark:hidden" />
@@ -35,6 +42,53 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
           currentProjectName={currentProjectName}
           onCreateProject={onCreateProject}
         />
+        {currentProjectId && repoPath && branchStatus && onRefreshBranchStatus && onBranchNeedsCommit && (
+          <>
+            <span className="text-foreground/30">|</span>
+            <BranchSwitcher
+              projectId={currentProjectId}
+              branchStatus={branchStatus}
+              onRefreshStatus={onRefreshBranchStatus}
+              onNeedsCommit={onBranchNeedsCommit}
+            />
+
+            {/* Uncommitted changes indicator */}
+            {branchStatus.uncommittedCount > 0 && onOpenCodeReview && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onOpenCodeReview}
+                className="gap-1.5 h-7 px-2"
+                title={`${branchStatus.uncommittedCount} uncommitted change${branchStatus.uncommittedCount !== 1 ? "s" : ""}`}
+              >
+                <CircleIcon weight="fill" className="size-2 text-secondary" />
+                <span className="font-mono text-xs">{branchStatus.uncommittedCount}</span>
+              </Button>
+            )}
+
+            {/* Push indicator */}
+            {branchStatus.commitsAhead > 0 && branchStatus.hasRemote && onPush && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onPush}
+                disabled={isPushing}
+                className="gap-1.5 h-7 px-2"
+                title={`Push ${branchStatus.commitsAhead} commit${branchStatus.commitsAhead !== 1 ? "s" : ""}`}
+              >
+                {isPushing ? (
+                  <SpinnerGapIcon weight="bold" className="size-3 animate-spin" />
+                ) : (
+                  <>
+                    <ArrowUpIcon weight="bold" className="size-3" />
+                    <span className="font-mono text-xs uppercase tracking-wider">Push</span>
+                    <span className="font-mono text-xs">{branchStatus.commitsAhead}</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </>
+        )}
         {featureName && (
           <>
             <span className="text-foreground/30">/</span>
@@ -70,11 +124,6 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        {currentProjectId && onOpenCodeReview && (
-          <Button variant="ghost" size="icon" onClick={onOpenCodeReview} title="Code Review">
-            <GitDiffIcon weight="bold" className="h-4 w-4" />
-          </Button>
-        )}
         {currentProjectId && onOpenSettings && (
           <Button variant="ghost" size="icon" onClick={onOpenSettings}>
             <GearIcon weight="bold" className="h-4 w-4" />

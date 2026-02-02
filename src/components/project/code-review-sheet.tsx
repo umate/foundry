@@ -12,23 +12,31 @@ interface CodeReviewSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
+  hasRemote?: boolean;
+  onRefreshStatus?: () => void;
 }
 
 export function CodeReviewSheet({
   open,
   onOpenChange,
   projectId,
+  hasRemote,
+  onRefreshStatus,
 }: CodeReviewSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-2xl flex flex-col overflow-hidden">
         <SheetHeader>
           <SheetTitle className="font-mono uppercase tracking-wider">
-            Code Review
+            Changes
           </SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto">
-          <CodeReviewViewer projectId={projectId} />
+        <div className="flex-1 overflow-auto flex flex-col">
+          <CodeReviewViewer
+            projectId={projectId}
+            hasRemote={hasRemote}
+            onRefreshStatus={onRefreshStatus}
+          />
         </div>
       </SheetContent>
     </Sheet>
