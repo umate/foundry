@@ -37,6 +37,7 @@ interface CodeReviewViewerProps {
   onFeatureCompleted?: () => void;
   hasRemote?: boolean;
   onRefreshStatus?: () => void;
+  onClose?: () => void;
 }
 
 function DiffStats({ additions, deletions }: { additions: number; deletions: number }) {
@@ -124,7 +125,7 @@ function FileDiffItem({ file, isExpanded, onToggle }: { file: FileDiff; isExpand
   );
 }
 
-export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted, hasRemote, onRefreshStatus }: CodeReviewViewerProps) {
+export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted, hasRemote, onRefreshStatus, onClose }: CodeReviewViewerProps) {
   const [data, setData] = useState<DiffResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -382,6 +383,7 @@ export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted, has
           }}
           onSuccess={() => {
             onRefreshStatus?.();
+            onClose?.();
           }}
           onFeatureCompleted={onFeatureCompleted}
           onPushSuccess={onRefreshStatus}

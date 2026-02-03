@@ -36,6 +36,7 @@ export function CodeReviewSheet({
             projectId={projectId}
             hasRemote={hasRemote}
             onRefreshStatus={onRefreshStatus}
+            onClose={() => onOpenChange(false)}
           />
         </div>
       </SheetContent>
