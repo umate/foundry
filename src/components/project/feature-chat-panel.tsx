@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
+import { Play, CheckCircle, Trash, X, GitDiff } from "@phosphor-icons/react";
 import { useTrackOpenPanel, useBackgroundStream } from "@/components/project/background-stream-context";
 import { ModeProvider } from "@/components/providers/mode-provider";
 import { toast } from "sonner";
@@ -81,7 +81,37 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [showDeleteSpecDialog, setShowDeleteSpecDialog] = useState(false);
   const [isDeletingSpec, setIsDeletingSpec] = useState(false);
 
+  // Git changes count
+  const [changesCount, setChangesCount] = useState<number>(0);
+
   const isOpen = featureId !== null;
+
+  // Fetch git changes count
+  const fetchChangesCount = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/git/diff?projectId=${projectId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setChangesCount(data.files?.length || 0);
+      }
+    } catch {
+      // Silently fail - count will stay at 0
+    }
+  }, [projectId]);
+
+  // Fetch changes count on mount and when panel closes (after commit)
+  useEffect(() => {
+    if (isOpen) {
+      fetchChangesCount();
+    }
+  }, [isOpen, fetchChangesCount]);
+
+  // Refresh changes count when code-review panel closes
+  useEffect(() => {
+    if (openPanel !== 'code-review') {
+      fetchChangesCount();
+    }
+  }, [openPanel, fetchChangesCount]);
 
   // Handle escape key - close sidebar first, then panel
   useEffect(() => {
@@ -462,24 +492,26 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           </CollapsibleSideBar>
         )} */}
 
-        {/* Code Review Panel - Collapsible side bar (only when current or done) */}
-        {(feature?.status === "current" || feature?.status === "done") && (
-          <CollapsibleSideBar
-            label="CODE"
-            isExpanded={openPanel === 'code-review'}
-            onToggle={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
-            hasContent={true}
-          >
-            <CodeReviewViewer
-              projectId={projectId}
-              featureId={featureId}
-              onFeatureCompleted={() => {
-                setFeature((prev) => prev ? { ...prev, status: "done" } : null);
-                onFeatureUpdated();
-              }}
-            />
-          </CollapsibleSideBar>
-        )}
+        {/* Code Review Panel - Collapsible side bar (always available) */}
+        <CollapsibleSideBar
+          label="CODE"
+          isExpanded={openPanel === 'code-review'}
+          onToggle={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
+          hasContent={changesCount > 0}
+        >
+          <CodeReviewViewer
+            projectId={projectId}
+            featureId={featureId}
+            onFeatureCompleted={() => {
+              setFeature((prev) => prev ? { ...prev, status: "done" } : null);
+              onFeatureUpdated();
+            }}
+            onRefreshStatus={() => {
+              setOpenPanel(null);
+              fetchChangesCount();
+            }}
+          />
+        </CollapsibleSideBar>
 
         {/* Chat Panel - Right side (always visible when panel is open) */}
         <div
@@ -563,6 +595,20 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                         Complete
                       </Button>
                     )}
+                    <Button
+                      variant={openPanel === 'code-review' ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
+                      className="h-6 gap-1 text-[10px] px-2"
+                      title="View code changes"
+                    >
+                      <GitDiff weight="bold" className="size-3" />
+                      {changesCount > 0 && (
+                        <span className="flex items-center justify-center min-w-[14px] h-[14px] px-1 text-[9px] font-mono bg-destructive text-destructive-foreground rounded-sm">
+                          {changesCount}
+                        </span>
+                      )}
+                    </Button>
                     <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                       <AlertDialogTrigger asChild>
                         <Button
