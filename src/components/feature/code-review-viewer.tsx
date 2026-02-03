@@ -381,12 +381,10 @@ export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted, has
             additions: data.totalAdditions,
             deletions: data.totalDeletions,
           }}
-          onSuccess={() => {
-            onRefreshStatus?.();
-            onClose?.();
-          }}
+          onSuccess={onRefreshStatus}
           onFeatureCompleted={onFeatureCompleted}
           onPushSuccess={onRefreshStatus}
+          onComplete={onClose}
           hasRemote={hasRemote}
         />
       )}

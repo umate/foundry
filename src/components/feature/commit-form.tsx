@@ -22,6 +22,7 @@ interface CommitFormProps {
   onSuccess?: () => void;
   onFeatureCompleted?: () => void;
   onPushSuccess?: () => void;
+  onComplete?: () => void;
   hasRemote?: boolean;
 }
 
@@ -32,6 +33,7 @@ export function CommitForm({
   onSuccess,
   onFeatureCompleted,
   onPushSuccess,
+  onComplete,
   hasRemote,
 }: CommitFormProps) {
   const [message, setMessage] = useState("");
@@ -124,6 +126,8 @@ export function CommitForm({
       } else {
         toast.success("Changes committed");
       }
+
+      onComplete?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to commit");
     } finally {
@@ -169,7 +173,7 @@ export function CommitForm({
 
       {/* Message textarea */}
       {generating ? (
-        <div className="flex items-center justify-center h-20 border rounded-sm bg-muted/30 mb-2">
+        <div className="flex items-center justify-center h-[140px] border rounded-sm bg-muted/30 mb-2">
           <div className="flex items-center gap-2 text-muted-foreground">
             <SpinnerGapIcon
               weight="bold"
@@ -186,9 +190,9 @@ export function CommitForm({
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Commit message..."
-          rows={3}
+          rows={6}
           disabled={isLoading}
-          className="resize-none min-h-[80px] text-sm mb-2"
+          className="resize-none min-h-[140px] text-sm mb-2"
         />
       )}
 
