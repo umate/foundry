@@ -58,7 +58,7 @@ interface FeatureChatProps {
   /** Called when AI generates initial spec (markdown) */
   onSpecGenerated: (markdown: string) => void;
   /** Called when AI proposes changes to existing spec */
-  onPendingChange: (markdown: string, changeSummary: string) => void;
+  onPendingChange?: (markdown: string, changeSummary: string) => void;
   /** Called when user accepts pending change */
   onAcceptChange: () => void;
   /** Called when user rejects pending change */

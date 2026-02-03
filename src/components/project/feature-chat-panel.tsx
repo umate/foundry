@@ -60,12 +60,13 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [openPanel, setOpenPanel] = useState<'spec' | 'wireframe' | 'code-review' | null>(null);
 
   // Get background stream for sending implementation messages
-  const { sendMessage: bgSendMessage } = useBackgroundStream();
+  const { sendMessage: bgSendMessage, getStreamState, clearPendingChange } = useBackgroundStream();
+
+  // Pending change from context (scoped per-feature)
+  const pendingChange = featureId ? getStreamState(featureId)?.pendingChange ?? null : null;
 
   // Spec state
   const [specContent, setSpecContent] = useState("");
-  const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
-  const [originalMarkdown, setOriginalMarkdown] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -182,40 +183,28 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     }
   }, [featureId, onFeatureUpdated]);
 
-  // Handle pending change from updateSpec tool
-  const handlePendingChange = useCallback(
-    (proposed: string) => {
-      setOriginalMarkdown(specContent);
-      setProposedMarkdown(proposed);
-    },
-    [specContent]
-  );
-
-  // Handle accepting the proposed change
+  // Handle accepting the proposed change (from context)
   const handleAcceptChange = useCallback(() => {
-    if (proposedMarkdown) {
-      setSpecContent(proposedMarkdown);
+    if (pendingChange) {
+      setSpecContent(pendingChange.proposedMarkdown);
       setHasUnsavedChanges(true);
     }
-    setProposedMarkdown(null);
-    setOriginalMarkdown(null);
-  }, [proposedMarkdown]);
+    if (featureId) clearPendingChange(featureId);
+  }, [pendingChange, featureId, clearPendingChange]);
 
-  // Handle rejecting the proposed change
+  // Handle rejecting the proposed change (from context)
   const handleRejectChange = useCallback(() => {
-    setProposedMarkdown(null);
-    setOriginalMarkdown(null);
-  }, []);
+    if (featureId) clearPendingChange(featureId);
+  }, [featureId, clearPendingChange]);
 
   // Handle session reset
   const handleSessionReset = useCallback(() => {
     setMessages([]);
     setMessagesKey((prev) => prev + 1);
-    setProposedMarkdown(null);
-    setOriginalMarkdown(null);
+    if (featureId) clearPendingChange(featureId);
     // Clear initialIdea to prevent auto-send on remount
     setFeature((prev) => (prev ? { ...prev, initialIdea: null } : null));
-  }, []);
+  }, [featureId, clearPendingChange]);
 
   // Handle wireframe generation
   const handleWireframeGenerated = useCallback(async (wireframe: string) => {
@@ -348,8 +337,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         // Clear local state
         setSpecContent("");
         setWireframeContent("");
-        setProposedMarkdown(null);
-        setOriginalMarkdown(null);
+        if (featureId) clearPendingChange(featureId);
         setFeature((prev) => prev ? { ...prev, specMarkdown: null, wireframe: null } : null);
         setShowDeleteSpecDialog(false);
         setOpenPanel(null); // Close the spec panel
@@ -360,7 +348,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     } finally {
       setIsDeletingSpec(false);
     }
-  }, [featureId, onFeatureUpdated]);
+  }, [featureId, clearPendingChange, onFeatureUpdated]);
 
   // Save spec
   const saveSpec = useCallback(async () => {
@@ -452,11 +440,11 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         >
           <SpecEditor
             ref={editorRef}
-            content={proposedMarkdown ?? specContent}
+            content={pendingChange?.proposedMarkdown ?? specContent}
             onChange={handleSpecChange}
             saveStatus={saveStatus}
-            diffMarkdown={originalMarkdown ?? undefined}
-            viewMode={originalMarkdown ? "diff" : "rich-text"}
+            diffMarkdown={pendingChange?.originalMarkdown ?? undefined}
+            viewMode={pendingChange ? "diff" : "rich-text"}
             projectContext={project}
             featureTitle={feature?.title}
           />
@@ -623,13 +611,12 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                   initialIdea={feature.initialIdea || undefined}
                   initialMessages={messages}
                   onSpecGenerated={handleSpecGenerated}
-                  onPendingChange={handlePendingChange}
                   onAcceptChange={handleAcceptChange}
                   onRejectChange={handleRejectChange}
                   onWireframeGenerated={handleWireframeGenerated}
                   onSessionReset={handleSessionReset}
                   currentSpecMarkdown={specContent}
-                  hasPendingChange={proposedMarkdown !== null}
+                  hasPendingChange={pendingChange !== null}
                   hasSavedSpec={!!feature.specMarkdown}
                   onStatusChange={() => handleStatusTransition("ready")}
                 />

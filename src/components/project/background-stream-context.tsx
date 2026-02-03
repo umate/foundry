@@ -5,11 +5,18 @@ import { startStream, type ChatStatus, type ContextUsage } from "@/lib/stream-ma
 import type { DisplayMessage } from "@/lib/hooks/use-claude-code-chat";
 import { toast } from "sonner";
 
+interface PendingChange {
+  proposedMarkdown: string;
+  originalMarkdown: string;
+  changeSummary: string;
+}
+
 interface StreamState {
   status: ChatStatus;
   messages: DisplayMessage[];
   error: Error | null;
   contextUsage: ContextUsage | null;
+  pendingChange: PendingChange | null;
 }
 
 interface StreamOptions {
@@ -47,6 +54,8 @@ interface BackgroundStreamContextValue {
   // Track which feature panel is currently open (for toast suppression)
   registerOpenPanel: (featureId: string) => void;
   unregisterOpenPanel: (featureId: string) => void;
+  // Clear pending change for a feature
+  clearPendingChange: (featureId: string) => void;
 }
 
 const BackgroundStreamContext = createContext<BackgroundStreamContextValue | null>(null);
@@ -93,7 +102,7 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
   const updateStreamState = useCallback((featureId: string, update: Partial<StreamState>) => {
     setStreams(prev => {
       const newMap = new Map(prev);
-      const existing = newMap.get(featureId) || { status: "idle" as ChatStatus, messages: [], error: null, contextUsage: null };
+      const existing = newMap.get(featureId) || { status: "idle" as ChatStatus, messages: [], error: null, contextUsage: null, pendingChange: null };
       newMap.set(featureId, { ...existing, ...update });
       return newMap;
     });
@@ -201,7 +210,16 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
           }
         },
         onSpecGenerated: options.onSpecGenerated,
-        onPendingChange: options.onPendingChange,
+        onPendingChange: (markdown: string, changeSummary: string) => {
+          updateStreamState(featureId, {
+            pendingChange: {
+              proposedMarkdown: markdown,
+              originalMarkdown: options.currentSpecMarkdown || "",
+              changeSummary,
+            }
+          });
+          options.onPendingChange?.(markdown, changeSummary);
+        },
         onWireframeGenerated: options.onWireframeGenerated,
         onContextUsage: (usage) => {
           updateStreamState(featureId, { contextUsage: usage });
@@ -250,6 +268,11 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
     openFeaturePanelRef.current = callback;
   }, []);
 
+  // Clear pending change for a feature
+  const clearPendingChange = useCallback((featureId: string) => {
+    updateStreamState(featureId, { pendingChange: null });
+  }, [updateStreamState]);
+
   // Register/unregister open panels for toast suppression
   const registerOpenPanel = useCallback((featureId: string) => {
     openPanelsRef.current.add(featureId);
@@ -279,7 +302,8 @@ export function BackgroundStreamProvider({ children }: BackgroundStreamProviderP
     setMessages,
     setOpenFeaturePanel,
     registerOpenPanel,
-    unregisterOpenPanel
+    unregisterOpenPanel,
+    clearPendingChange
   };
 
   return (
@@ -308,13 +332,15 @@ export function useFeatureStream(featureId: string) {
     status: streamState?.status || "idle",
     error: streamState?.error || null,
     contextUsage: streamState?.contextUsage || null,
+    pendingChange: streamState?.pendingChange || null,
     isStreaming: context.isStreaming(featureId),
     sendMessage: (message: ChatMessageInput, options: StreamOptions) => {
       context.sendMessage(featureId, message, options);
     },
     stop: () => context.stopStream(featureId),
     clearMessages: () => context.clearStream(featureId),
-    setMessages: (messages: DisplayMessage[]) => context.setMessages(featureId, messages)
+    setMessages: (messages: DisplayMessage[]) => context.setMessages(featureId, messages),
+    clearPendingChange: () => context.clearPendingChange(featureId)
   };
 }
 
