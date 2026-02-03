@@ -19,6 +19,25 @@ interface FileDiff {
   chunks: string;
   staged: boolean;
   untracked?: boolean;
+  binary?: boolean;
+}
+
+// Common binary file extensions
+const BINARY_EXTENSIONS = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.bmp', '.tiff', '.tif',
+  '.svg', '.pdf', '.woff', '.woff2', '.ttf', '.eot', '.otf',
+  '.mp3', '.mp4', '.wav', '.ogg', '.webm', '.avi', '.mov', '.flac',
+  '.zip', '.tar', '.gz', '.rar', '.7z', '.bz2',
+  '.exe', '.dll', '.so', '.dylib', '.bin',
+  '.sqlite', '.db', '.sqlite3',
+  '.pyc', '.class', '.o', '.obj',
+]);
+
+function isBinaryExtension(filename: string): boolean {
+  const lastDot = filename.lastIndexOf('.');
+  if (lastDot === -1) return false;
+  const ext = filename.slice(lastDot).toLowerCase();
+  return BINARY_EXTENSIONS.has(ext);
 }
 
 function parseDiff(diffOutput: string, staged: boolean): FileDiff[] {
@@ -34,6 +53,26 @@ function parseDiff(diffOutput: string, staged: boolean): FileDiff[] {
     if (!headerMatch) continue;
 
     const filename = headerMatch[2]; // Use the "b" path (destination)
+
+    // Check if git marked this as a binary file
+    // Git outputs "Binary files a/... and b/... differ" on its own line for binary diffs
+    // or "GIT binary patch" at the start of a line for binary patches
+    const isBinaryDiff = fileDiff.split('\n').some(line =>
+      /^Binary files .+ and .+ differ/.test(line) ||
+      line === 'GIT binary patch'
+    );
+
+    if (isBinaryDiff) {
+      files.push({
+        filename,
+        additions: 0,
+        deletions: 0,
+        chunks: `Binary file: ${filename}`,
+        staged,
+        binary: true,
+      });
+      continue;
+    }
 
     // Count additions and deletions
     const lines = fileDiff.split('\n');
@@ -75,6 +114,20 @@ async function getUntrackedFiles(repoPath: string): Promise<FileDiff[]> {
     for (const filename of filenames) {
       try {
         const filePath = join(repoPath, filename);
+
+        // Check if file has a binary extension
+        if (isBinaryExtension(filename)) {
+          untrackedFiles.push({
+            filename,
+            additions: 0,
+            deletions: 0,
+            chunks: `Binary file: ${filename}`,
+            staged: false,
+            untracked: true,
+            binary: true,
+          });
+          continue;
+        }
 
         // Check file size before reading to prevent memory issues
         const fileStat = await stat(filePath);

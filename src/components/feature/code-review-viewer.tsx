@@ -21,6 +21,7 @@ interface FileDiff {
   chunks: string;
   staged: boolean;
   untracked?: boolean;
+  binary?: boolean;
 }
 
 interface DiffResponse {
@@ -95,19 +96,34 @@ function FileDiffItem({ file, isExpanded, onToggle }: { file: FileDiff; isExpand
     );
   };
 
+  // Binary files cannot be expanded
+  const canExpand = !file.binary;
+
   return (
     <div className="border-b border-border last:border-b-0">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors cursor-pointer"
+      <div
+        onClick={canExpand ? onToggle : undefined}
+        className={`w-full flex items-center gap-2 px-3 py-2 transition-colors ${
+          canExpand ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"
+        }`}
       >
-        {isExpanded ? (
-          <CaretDown weight="bold" className="size-3 shrink-0 text-muted-foreground" />
+        {/* Chevron: only show for expandable files */}
+        {canExpand ? (
+          isExpanded ? (
+            <CaretDown weight="bold" className="size-3 shrink-0 text-muted-foreground" />
+          ) : (
+            <CaretRight weight="bold" className="size-3 shrink-0 text-muted-foreground" />
+          )
         ) : (
-          <CaretRight weight="bold" className="size-3 shrink-0 text-muted-foreground" />
+          <div className="size-3 shrink-0" />
         )}
         <File weight="duotone" className="size-4 shrink-0 text-muted-foreground" />
         <span className="font-mono text-xs truncate flex-1 text-left">{file.filename}</span>
+        {file.binary && (
+          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm">
+            binary
+          </span>
+        )}
         {file.staged && (
           <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm">
             staged
@@ -118,9 +134,9 @@ function FileDiffItem({ file, isExpanded, onToggle }: { file: FileDiff; isExpand
             new
           </span>
         )}
-        <DiffStats additions={file.additions} deletions={file.deletions} />
-      </button>
-      {isExpanded && renderDiffLines()}
+        {!file.binary && <DiffStats additions={file.additions} deletions={file.deletions} />}
+      </div>
+      {isExpanded && canExpand && renderDiffLines()}
     </div>
   );
 }
@@ -311,16 +327,18 @@ export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted, has
             variant="outline"
             size="sm"
             onClick={() => {
-              const allExpanded = data.files.every(f => expandedFiles.has(f.filename));
+              // Only consider non-binary files for expand/collapse
+              const expandableFiles = data.files.filter(f => !f.binary);
+              const allExpanded = expandableFiles.every(f => expandedFiles.has(f.filename));
               if (allExpanded) {
                 setExpandedFiles(new Set());
               } else {
-                setExpandedFiles(new Set(data.files.map(f => f.filename)));
+                setExpandedFiles(new Set(expandableFiles.map(f => f.filename)));
               }
             }}
             className="h-6 px-2 text-xs font-mono"
           >
-            {data.files.every(f => expandedFiles.has(f.filename)) ? "Collapse All" : "Expand All"}
+            {data.files.filter(f => !f.binary).every(f => expandedFiles.has(f.filename)) ? "Collapse All" : "Expand All"}
           </Button>
           <DiffStats additions={data.totalAdditions} deletions={data.totalDeletions} />
         </div>
