@@ -10,6 +10,8 @@ import { ProjectSettingsDialog } from '@/components/project/project-settings-dia
 import { FeatureChatPanel } from '@/components/project/feature-chat-panel';
 import { CodeReviewSheet } from '@/components/project/code-review-sheet';
 import { BackgroundStreamProvider, useBackgroundStream } from '@/components/project/background-stream-context';
+import { DevServerProvider, useOptionalDevServer } from '@/components/project/dev-server-context';
+import { DevServerDrawer } from '@/components/project/dev-server-drawer';
 import { CommitDialog } from '@/components/feature/commit-dialog';
 import { UncommittedChangesDialog } from '@/components/layout/uncommitted-changes-dialog';
 import { FeaturesByStatus, Feature, mapDbStatusToUi } from '@/types/feature';
@@ -23,6 +25,7 @@ interface ProjectData {
   stack: string | null;
   repoPath: string | null;
   widgetApiKey: string | null;
+  packageManager: string | null;
   features: {
     idea: Feature[];
     scoped: Feature[];
@@ -120,7 +123,7 @@ export default function ProjectPage({
     router.push(`/projects/${newProjectId}`);
   };
 
-  const handleProjectUpdated = (updated: { id: string; name: string; description: string | null; stack: string | null; repoPath: string | null; widgetApiKey: string | null }) => {
+  const handleProjectUpdated = (updated: { id: string; name: string; description: string | null; stack: string | null; repoPath: string | null; widgetApiKey: string | null; packageManager: string | null }) => {
     setProject(prev => prev ? { ...prev, ...updated } : prev);
   };
 
@@ -142,27 +145,37 @@ export default function ProjectPage({
     return null;
   }
 
+  const content = (
+    <ProjectPageContent
+      project={project}
+      selectedFeatureId={selectedFeatureId}
+      setSelectedFeatureId={setSelectedFeatureId}
+      addIdeaOpen={addIdeaOpen}
+      setAddIdeaOpen={setAddIdeaOpen}
+      createProjectOpen={createProjectOpen}
+      setCreateProjectOpen={setCreateProjectOpen}
+      settingsOpen={settingsOpen}
+      setSettingsOpen={setSettingsOpen}
+      codeReviewOpen={codeReviewOpen}
+      setCodeReviewOpen={setCodeReviewOpen}
+      handleIdeaAdded={handleIdeaAdded}
+      handleFeatureUpdated={handleFeatureUpdated}
+      handleFeatureClick={handleFeatureClick}
+      handlePanelClose={handlePanelClose}
+      handleProjectCreated={handleProjectCreated}
+      handleProjectUpdated={handleProjectUpdated}
+    />
+  );
+
   return (
     <BackgroundStreamProvider>
-      <ProjectPageContent
-        project={project}
-        selectedFeatureId={selectedFeatureId}
-        setSelectedFeatureId={setSelectedFeatureId}
-        addIdeaOpen={addIdeaOpen}
-        setAddIdeaOpen={setAddIdeaOpen}
-        createProjectOpen={createProjectOpen}
-        setCreateProjectOpen={setCreateProjectOpen}
-        settingsOpen={settingsOpen}
-        setSettingsOpen={setSettingsOpen}
-        codeReviewOpen={codeReviewOpen}
-        setCodeReviewOpen={setCodeReviewOpen}
-        handleIdeaAdded={handleIdeaAdded}
-        handleFeatureUpdated={handleFeatureUpdated}
-        handleFeatureClick={handleFeatureClick}
-        handlePanelClose={handlePanelClose}
-        handleProjectCreated={handleProjectCreated}
-        handleProjectUpdated={handleProjectUpdated}
-      />
+      {project.repoPath ? (
+        <DevServerProvider projectId={project.id}>
+          {content}
+        </DevServerProvider>
+      ) : (
+        content
+      )}
     </BackgroundStreamProvider>
   );
 }
@@ -203,9 +216,10 @@ function ProjectPageContent({
   handleFeatureClick: (featureId: string) => void;
   handlePanelClose: () => void;
   handleProjectCreated: (newProjectId: string) => void;
-  handleProjectUpdated: (updated: { id: string; name: string; description: string | null; stack: string | null; repoPath: string | null; widgetApiKey: string | null }) => void;
+  handleProjectUpdated: (updated: { id: string; name: string; description: string | null; stack: string | null; repoPath: string | null; widgetApiKey: string | null; packageManager: string | null }) => void;
 }) {
   const { setOpenFeaturePanel } = useBackgroundStream();
+  const devServer = useOptionalDevServer();
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -405,6 +419,10 @@ function ProjectPageContent({
         onBranchNeedsCommit={handleBranchNeedsCommit}
         onPush={handlePush}
         isPushing={isPushing}
+        devServerStatus={devServer?.state.status}
+        onStartDevServer={devServer?.start}
+        onStopDevServer={devServer?.stop}
+        onOpenDevServerLogs={devServer?.openDrawer}
       />
 
       <PanelBoard
@@ -473,6 +491,9 @@ function ProjectPageContent({
         diffSummary={branchDiffSummary}
         onSuccess={handleBranchCommitSuccess}
       />
+
+      {/* Dev Server Drawer */}
+      {devServer && <DevServerDrawer />}
     </div>
   );
 }

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { PlusIcon, GearIcon, TrashIcon, MagnifyingGlassIcon, XIcon, CircleIcon, ArrowUpIcon, SpinnerGapIcon, GitDiffIcon } from "@phosphor-icons/react";
+import { PlusIcon, GearIcon, TrashIcon, MagnifyingGlassIcon, XIcon, CircleIcon, ArrowUpIcon, SpinnerGapIcon, GitDiffIcon, PlayIcon, TerminalIcon } from "@phosphor-icons/react";
+import type { DevServerStatus } from "@/lib/dev-server-manager";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
 import { ThemeToggle } from "./theme-toggle";
@@ -25,9 +26,14 @@ interface AppHeaderProps {
   onBranchNeedsCommit?: (targetBranch: string) => void;
   onPush?: () => void;
   isPushing?: boolean;
+  // Dev server props
+  devServerStatus?: DevServerStatus;
+  onStartDevServer?: () => void;
+  onStopDevServer?: () => void;
+  onOpenDevServerLogs?: () => void;
 }
 
-export function AppHeader({ currentProjectId, currentProjectName, featureName, searchQuery, onSearchChange, onAddIdea, onCreateProject, onOpenSettings, onOpenCodeReview, onDeleteFeature, repoPath, branchStatus, onRefreshBranchStatus, onBranchNeedsCommit, onPush, isPushing }: AppHeaderProps) {
+export function AppHeader({ currentProjectId, currentProjectName, featureName, searchQuery, onSearchChange, onAddIdea, onCreateProject, onOpenSettings, onOpenCodeReview, onDeleteFeature, repoPath, branchStatus, onRefreshBranchStatus, onBranchNeedsCommit, onPush, isPushing, devServerStatus, onStartDevServer, onStopDevServer, onOpenDevServerLogs }: AppHeaderProps) {
   return (
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
       {/* Left: Logo + Project Selector + Git Controls + Feature Breadcrumb */}
@@ -129,6 +135,62 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Dev Server Controls */}
+        {currentProjectId && repoPath && (
+          <>
+            {/* Start/Stop Server Button */}
+            {devServerStatus === "running" || devServerStatus === "starting" ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onStopDevServer}
+                className="gap-1.5 h-7 px-2"
+                title="Stop development server"
+              >
+                <CircleIcon
+                  weight="fill"
+                  className={`size-2 ${devServerStatus === "running" ? "text-green-500 animate-pulse-slow" : "text-yellow-500 animate-pulse"}`}
+                />
+                <span className="font-mono text-xs uppercase tracking-wider">
+                  {devServerStatus === "starting" ? "Starting..." : "Server"}
+                </span>
+              </Button>
+            ) : devServerStatus === "error" ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onStartDevServer}
+                className="gap-1.5 h-7 px-2"
+                title="Restart development server"
+              >
+                <CircleIcon weight="fill" className="size-2 text-red-500" />
+                <span className="font-mono text-xs uppercase tracking-wider">Error</span>
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onStartDevServer}
+                className="gap-1.5 h-7 px-2"
+                title="Start development server"
+              >
+                <PlayIcon weight="bold" className="size-3.5" />
+                <span className="font-mono text-xs uppercase tracking-wider">Start Server</span>
+              </Button>
+            )}
+
+            {/* Terminal/Console Button - always visible */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onOpenDevServerLogs}
+              className="h-7 w-7"
+              title="View server console"
+            >
+              <TerminalIcon weight="bold" className="size-4" />
+            </Button>
+          </>
+        )}
         <ThemeToggle />
         {currentProjectId && onOpenSettings && (
           <Button variant="ghost" size="icon" onClick={onOpenSettings}>

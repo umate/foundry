@@ -13,6 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FolderPickerDialog } from '@/components/ui/folder-picker-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ProjectBase {
   id: string;
@@ -21,6 +28,7 @@ interface ProjectBase {
   stack: string | null;
   repoPath: string | null;
   widgetApiKey: string | null;
+  packageManager: string | null;
 }
 
 interface ProjectSettingsDialogProps {
@@ -40,6 +48,7 @@ export function ProjectSettingsDialog({
   const [description, setDescription] = useState(project.description || '');
   const [stack, setStack] = useState(project.stack || '');
   const [repoPath, setRepoPath] = useState(project.repoPath || '');
+  const [packageManager, setPackageManager] = useState(project.packageManager || '');
   const [apiKey, setApiKey] = useState(project.widgetApiKey || '');
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -52,6 +61,7 @@ export function ProjectSettingsDialog({
     setDescription(project.description || '');
     setStack(project.stack || '');
     setRepoPath(project.repoPath || '');
+    setPackageManager(project.packageManager || '');
     setApiKey(project.widgetApiKey || '');
   }, [project]);
 
@@ -69,6 +79,7 @@ export function ProjectSettingsDialog({
           description: description.trim() || null,
           stack: stack.trim() || null,
           repoPath: repoPath.trim() || null,
+          packageManager: packageManager || null,
         }),
       });
 
@@ -226,6 +237,38 @@ Please:
               value={repoPath}
               onSelect={setRepoPath}
             />
+
+            {/* Dev Server Section */}
+            {repoPath && (
+              <div className="space-y-2 pt-2 border-t border-foreground/10">
+                <label className="text-sm font-medium font-mono uppercase tracking-wider">
+                  Dev Server
+                </label>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">
+                    Package Manager
+                  </label>
+                  <Select
+                    value={packageManager || 'auto'}
+                    onValueChange={(value) => setPackageManager(value === 'auto' ? '' : value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Auto-detect" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto-detect</SelectItem>
+                      <SelectItem value="bun">bun</SelectItem>
+                      <SelectItem value="npm">npm</SelectItem>
+                      <SelectItem value="yarn">yarn</SelectItem>
+                      <SelectItem value="pnpm">pnpm</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Override the detected package manager for the dev server
+                  </p>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3">

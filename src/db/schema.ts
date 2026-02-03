@@ -16,6 +16,7 @@ export const projects = sqliteTable('projects', {
   stack: text('stack'),
   widgetApiKey: text('widget_api_key'),
   repoPath: text('repo_path'),
+  packageManager: text('package_manager'), // 'bun' | 'npm' | 'yarn' | 'pnpm' | null (auto-detect)
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

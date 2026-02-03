@@ -419,3 +419,13 @@
 .animate-thinking-pulse {
   animation: thinking-pulse 2s ease-in-out infinite;
 }
+
+/* Slow pulse animation for running server indicator */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}

@@ -8,6 +8,7 @@ const updateProjectSchema = z.object({
   description: z.string().nullable().optional(),
   stack: z.string().nullable().optional(),
   repoPath: z.string().nullable().optional(),
+  packageManager: z.enum(["bun", "npm", "yarn", "pnpm"]).nullable().optional(),
   regenerateApiKey: z.boolean().optional(),
 });
 
