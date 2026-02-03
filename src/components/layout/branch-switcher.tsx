@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import {
   GitBranchIcon,
-  CaretDownIcon,
   CheckIcon,
   MagnifyingGlassIcon,
   SpinnerGapIcon,
@@ -168,20 +167,17 @@ export function BranchSwitcher({
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="gap-2 px-3 h-9">
-          <GitBranchIcon weight="bold" className="size-4" />
-          <span className="font-mono text-sm max-w-[150px] truncate">
-            {branchStatus.branch || "detached"}
+        <button
+          className="inline-flex items-center gap-1.5 h-6 px-2 text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm transition-colors"
+        >
+          <GitBranchIcon weight="bold" className="size-3" />
+          <span className="max-w-[120px] truncate">
+            {isCheckingOut ? "switching..." : (branchStatus.branch || "detached")}
           </span>
-          {isCheckingOut ? (
-            <SpinnerGapIcon
-              weight="bold"
-              className="size-3 animate-spin"
-            />
-          ) : (
-            <CaretDownIcon weight="bold" className="size-3" />
+          {isCheckingOut && (
+            <SpinnerGapIcon weight="bold" className="size-3 animate-spin" />
           )}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[280px]">
         {/* Search input */}
