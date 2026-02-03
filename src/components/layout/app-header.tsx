@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { PlusIcon, GearIcon, TrashIcon, MagnifyingGlassIcon, XIcon, CircleIcon, ArrowUpIcon, SpinnerGapIcon } from "@phosphor-icons/react";
+import { PlusIcon, GearIcon, TrashIcon, MagnifyingGlassIcon, XIcon, CircleIcon, ArrowUpIcon, SpinnerGapIcon, GitDiffIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
 import { ThemeToggle } from "./theme-toggle";
@@ -53,16 +53,21 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
             />
 
             {/* Uncommitted changes indicator */}
-            {branchStatus.uncommittedCount > 0 && onOpenCodeReview && (
+            {onOpenCodeReview && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onOpenCodeReview}
                 className="gap-1.5 h-7 px-2"
-                title={`${branchStatus.uncommittedCount} uncommitted change${branchStatus.uncommittedCount !== 1 ? "s" : ""}`}
+                title={branchStatus.uncommittedCount > 0 ? `${branchStatus.uncommittedCount} uncommitted change${branchStatus.uncommittedCount !== 1 ? "s" : ""}` : "View code changes"}
               >
-                <CircleIcon weight="fill" className="size-2 text-secondary" />
-                <span className="font-mono text-xs">{branchStatus.uncommittedCount}</span>
+                <GitDiffIcon weight="bold" className="size-3.5" />
+                {branchStatus.uncommittedCount > 0 && (
+                  <>
+                    <CircleIcon weight="fill" className="size-2 text-secondary" />
+                    <span className="font-mono text-xs">{branchStatus.uncommittedCount}</span>
+                  </>
+                )}
               </Button>
             )}
 

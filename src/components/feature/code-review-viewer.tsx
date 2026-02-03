@@ -381,7 +381,6 @@ export function CodeReviewViewer({ projectId, featureId, onFeatureCompleted, has
             deletions: data.totalDeletions,
           }}
           onSuccess={() => {
-            fetchDiff();
             onRefreshStatus?.();
           }}
           onFeatureCompleted={onFeatureCompleted}

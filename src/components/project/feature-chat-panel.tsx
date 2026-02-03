@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Play, CheckCircle, Trash, X, GitDiff } from "@phosphor-icons/react";
+import { Play, CheckCircle, Trash, X, GitDiffIcon } from "@phosphor-icons/react";
 import { useTrackOpenPanel, useBackgroundStream } from "@/components/project/background-stream-context";
 import { ModeProvider } from "@/components/providers/mode-provider";
 import { toast } from "sonner";
@@ -602,7 +602,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                       className="h-6 gap-1 text-[10px] px-2"
                       title="View code changes"
                     >
-                      <GitDiff weight="bold" className="size-3" />
+                      <GitDiffIcon weight="bold" className="size-3.5 text-muted-foreground" />
                       {changesCount > 0 && (
                         <span className="flex items-center justify-center min-w-[14px] h-[14px] px-1 text-[9px] font-mono bg-destructive text-destructive-foreground rounded-sm">
                           {changesCount}
