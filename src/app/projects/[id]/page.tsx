@@ -3,11 +3,11 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AppHeader } from '@/components/layout/app-header';
-import { PanelBoard } from '@/components/project/panel-board';
+import { FeatureSidebar } from '@/components/project/feature-sidebar';
+import { FeatureDetailArea } from '@/components/project/feature-detail-area';
 import { AddIdeaDialog } from '@/components/project/add-idea-dialog';
 import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
 import { ProjectSettingsDialog } from '@/components/project/project-settings-dialog';
-import { FeatureChatPanel } from '@/components/project/feature-chat-panel';
 import { CodeReviewSheet } from '@/components/project/code-review-sheet';
 import { BackgroundStreamProvider, useBackgroundStream } from '@/components/project/background-stream-context';
 import { DevServerProvider, useOptionalDevServer } from '@/components/project/dev-server-context';
@@ -425,13 +425,31 @@ function ProjectPageContent({
         onOpenDevServerLogs={devServer?.openDrawer}
       />
 
-      <PanelBoard
-        features={project.features}
-        searchQuery={searchQuery}
-        onFeatureUpdated={handleFeatureUpdated}
-        onFeatureClick={handleFeatureClick}
-        onAddIdea={() => setAddIdeaOpen(true)}
-      />
+      <div className="flex-1 flex min-h-0">
+        <FeatureSidebar
+          features={project.features}
+          searchQuery={searchQuery}
+          selectedFeatureId={selectedFeatureId}
+          onFeatureClick={handleFeatureClick}
+          onAddIdea={() => setAddIdeaOpen(true)}
+          onFeatureUpdated={handleFeatureUpdated}
+        />
+        <FeatureDetailArea
+          featureId={selectedFeatureId}
+          projectId={project.id}
+          project={{
+            name: project.name,
+            description: project.description,
+            stack: project.stack,
+          }}
+          onClose={handlePanelClose}
+          onFeatureUpdated={handleFeatureUpdated}
+          onFeatureCreated={(featureId) => {
+            handleFeatureClick(featureId);
+            handleFeatureUpdated();
+          }}
+        />
+      </div>
 
       <AddIdeaDialog
         open={addIdeaOpen}
@@ -460,18 +478,6 @@ function ProjectPageContent({
         projectId={project.id}
         hasRemote={branchStatus?.hasRemote}
         onRefreshStatus={loadBranchStatus}
-      />
-
-      <FeatureChatPanel
-        featureId={selectedFeatureId}
-        projectId={project.id}
-        project={{
-          name: project.name,
-          description: project.description,
-          stack: project.stack,
-        }}
-        onClose={handlePanelClose}
-        onFeatureUpdated={handleFeatureUpdated}
       />
 
       {/* Branch management dialogs */}

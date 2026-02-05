@@ -41,6 +41,9 @@ export const STATUS_LABELS: Record<FeatureStatus, string> = {
 
 export const STATUS_ORDER: FeatureStatus[] = ['idea', 'scoped', 'current', 'done'];
 
+// Sidebar groups: most active first
+export const SIDEBAR_STATUS_ORDER: FeatureStatus[] = ['current', 'scoped', 'idea', 'done'];
+
 // Map database status to UI status
 export function mapDbStatusToUi(dbStatus: FeatureStatusDb): FeatureStatus {
   if (dbStatus === 'ready') return 'current';

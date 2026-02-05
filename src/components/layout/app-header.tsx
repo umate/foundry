@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { PlusIcon, GearIcon, TrashIcon, MagnifyingGlassIcon, XIcon, CircleIcon, ArrowUpIcon, SpinnerGapIcon, GitDiffIcon, PlayIcon, TerminalIcon } from "@phosphor-icons/react";
+import { GearIcon, TrashIcon, MagnifyingGlassIcon, XIcon, CircleIcon, ArrowUpIcon, SpinnerGapIcon, GitDiffIcon, PlayIcon, TerminalIcon } from "@phosphor-icons/react";
 import type { DevServerStatus } from "@/lib/dev-server-manager";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
@@ -15,7 +15,7 @@ interface AppHeaderProps {
   featureName?: string;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
-  onAddIdea: () => void;
+  onAddIdea?: () => void;
   onCreateProject: () => void;
   onOpenSettings?: () => void;
   onOpenCodeReview?: () => void;
@@ -202,10 +202,6 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
             <TrashIcon weight="bold" className="h-4 w-4" />
           </Button>
         )}
-        <Button variant="outline" onClick={onAddIdea} size="sm">
-          <PlusIcon weight="bold" />
-          Add Idea
-        </Button>
       </div>
     </header>
   );

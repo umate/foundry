@@ -609,7 +609,7 @@ export function FeatureChat({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="flex flex-col h-full">
       {/* Messages Area */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Load more button */}
@@ -950,7 +950,7 @@ export function FeatureChat({
       </div>
 
       {/* Input Area */}
-      <div className="bg-card">
+      <div>
         {hasPendingChange ? (
           <div className="text-center text-sm text-muted-foreground py-2 px-3">
             Review the proposed changes before continuing

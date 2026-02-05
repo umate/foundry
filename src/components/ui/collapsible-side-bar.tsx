@@ -28,7 +28,7 @@ export function CollapsibleSideBar({
 
   if (isExpanded) {
     return (
-      <div className={cn("bg-card border-r border-border flex flex-col", expandedWidth)}>
+      <div className={cn("bg-card border-l border-border flex flex-col", expandedWidth)}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
           <h2 className="font-mono text-sm font-bold uppercase tracking-wider">{label}</h2>
           <div className="flex items-center gap-1">
@@ -56,7 +56,7 @@ export function CollapsibleSideBar({
   return (
     <button
       onClick={onToggle}
-      className="w-10 bg-muted border-r border-border flex items-center justify-center cursor-pointer hover:bg-muted/80 shrink-0"
+      className="w-10 bg-muted border-l border-border flex items-center justify-center cursor-pointer hover:bg-muted/80 shrink-0"
     >
       <span className="font-mono text-xs uppercase tracking-wider [writing-mode:vertical-rl] rotate-180">
         {label}

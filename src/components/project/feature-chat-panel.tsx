@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Play, CheckCircle, Trash, X, GitDiffIcon } from "@phosphor-icons/react";
+import { Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
 import { useTrackOpenPanel, useBackgroundStream } from "@/components/project/background-stream-context";
 import { ModeProvider } from "@/components/providers/mode-provider";
 import { toast } from "sonner";
@@ -20,15 +20,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { FeatureChat } from "@/components/feature/feature-chat";
 import { SpecEditor } from "@/components/feature/spec-editor";
-import { WireframeViewer } from "@/components/feature/wireframe-viewer";
-import { CodeReviewViewer } from "@/components/feature/code-review-viewer";
 import { CollapsibleSideBar } from "@/components/ui/collapsible-side-bar";
 import { FeatureStatus, STATUS_LABELS } from "@/types/feature";
 import type { FeatureMessage } from "@/db/schema";
 import type { MDXEditorMethods } from "@mdxeditor/editor";
 
 interface FeatureChatPanelProps {
-  featureId: string | null;
+  featureId: string;
   projectId: string;
   project: {
     name: string;
@@ -57,7 +55,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [feature, setFeature] = useState<FeatureData | null>(null);
   const [messages, setMessages] = useState<FeatureMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openPanel, setOpenPanel] = useState<'spec' | 'wireframe' | 'code-review' | null>(null);
+  const [openPanel, setOpenPanel] = useState<'spec' | 'wireframe' | null>(null);
 
   // Get background stream for sending implementation messages
   const { sendMessage: bgSendMessage, getStreamState, clearPendingChange } = useBackgroundStream();
@@ -81,42 +79,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [showDeleteSpecDialog, setShowDeleteSpecDialog] = useState(false);
   const [isDeletingSpec, setIsDeletingSpec] = useState(false);
 
-  // Git changes count
-  const [changesCount, setChangesCount] = useState<number>(0);
-
-  const isOpen = featureId !== null;
-
-  // Fetch git changes count
-  const fetchChangesCount = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/git/diff?projectId=${projectId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setChangesCount(data.files?.length || 0);
-      }
-    } catch {
-      // Silently fail - count will stay at 0
-    }
-  }, [projectId]);
-
-  // Fetch changes count on mount and when panel closes (after commit)
+  // Handle escape key - close sidebar first, then deselect feature
   useEffect(() => {
-    if (isOpen) {
-      fetchChangesCount();
-    }
-  }, [isOpen, fetchChangesCount]);
-
-  // Refresh changes count when code-review panel closes
-  useEffect(() => {
-    if (openPanel !== 'code-review') {
-      fetchChangesCount();
-    }
-  }, [openPanel, fetchChangesCount]);
-
-  // Handle escape key - close sidebar first, then panel
-  useEffect(() => {
-    if (!isOpen) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (openPanel !== null) {
@@ -129,7 +93,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, openPanel, onClose]);
+  }, [openPanel, onClose]);
 
   // Load feature data when featureId changes
   useEffect(() => {
@@ -437,250 +401,172 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     setHasUnsavedChanges(true);
   }, []);
 
-  // Handle backdrop click
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    // Only close if clicking the backdrop itself, not its children
-    if (e.target === e.currentTarget) {
-      if (openPanel !== null) {
-        setOpenPanel(null);
-      } else {
-        onClose();
-      }
-    }
-  };
-
   const hasSpec = !!feature?.specMarkdown || !!specContent;
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Single shared backdrop */}
-      <div className="absolute inset-0 bg-black/50 animate-in fade-in duration-200" onClick={handleBackdropClick} />
-
-      {/* Panel container - positioned on right */}
-      <div className="absolute inset-y-0 right-0 flex">
-        {/* Spec Panel - Collapsible side bar */}
-        <CollapsibleSideBar
-          label="SPEC"
-          isExpanded={openPanel === 'spec'}
-          onToggle={() => setOpenPanel(openPanel === 'spec' ? null : 'spec')}
-          hasContent={hasSpec}
-          onDelete={() => setShowDeleteSpecDialog(true)}
-        >
-          <SpecEditor
-            ref={editorRef}
-            content={pendingChange?.proposedMarkdown ?? specContent}
-            onChange={handleSpecChange}
-            saveStatus={saveStatus}
-            diffMarkdown={pendingChange?.originalMarkdown ?? undefined}
-            viewMode={pendingChange ? "diff" : "rich-text"}
-            projectContext={project}
-            featureTitle={feature?.title}
-          />
-        </CollapsibleSideBar>
-
-        {/* Wireframe Panel - Collapsible side bar */}
-        {/* {wireframeContent && (
-          <CollapsibleSideBar
-            label="WIREFRAME"
-            isExpanded={openPanel === 'wireframe'}
-            onToggle={() => setOpenPanel(openPanel === 'wireframe' ? null : 'wireframe')}
-            hasContent={true}
-          >
-            <WireframeViewer wireframe={wireframeContent} />
-          </CollapsibleSideBar>
-        )} */}
-
-        {/* Code Review Panel - Collapsible side bar (always available) */}
-        <CollapsibleSideBar
-          label="CODE"
-          isExpanded={openPanel === 'code-review'}
-          onToggle={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
-          hasContent={changesCount > 0}
-        >
-          <CodeReviewViewer
-            projectId={projectId}
-            featureId={featureId}
-            onFeatureCompleted={() => {
-              setFeature((prev) => prev ? { ...prev, status: "done" } : null);
-              onFeatureUpdated();
-            }}
-            onRefreshStatus={() => {
-              setOpenPanel(null);
-              fetchChangesCount();
-            }}
-          />
-        </CollapsibleSideBar>
-
-        {/* Chat Panel - Right side (always visible when panel is open) */}
-        <div
-          className={`bg-background border-l border-border flex flex-col animate-in fade-in duration-200 ${
-            openPanel !== null ? "w-[600px]" : "w-full sm:w-[600px]"
-          }`}
-        >
-          {loading ? (
-            <div className="flex flex-col h-full">
-              {/* Skeleton Header */}
-              <div className="px-3 py-1.5 border-b border-border shrink-0">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-4 flex-1" />
-                  <Skeleton className="h-6 w-20" />
-                </div>
-              </div>
-              {/* Skeleton Chat Area */}
-              <div className="flex-1 p-4 space-y-4">
-                <div className="flex gap-3">
-                  <Skeleton className="size-8 rounded-sm shrink-0" />
-                  <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                  </div>
-                </div>
-                <div className="flex gap-3 justify-end">
-                  <div className="space-y-2 flex-1 max-w-[80%]">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-1/2 ml-auto" />
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <Skeleton className="size-8 rounded-sm shrink-0" />
-                  <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                </div>
-              </div>
-              {/* Skeleton Footer */}
-              <div className="border-t border-border p-3 shrink-0">
-                <div className="flex gap-2">
-                  <Skeleton className="h-9 flex-1" />
-                  <Skeleton className="h-9 flex-1" />
-                </div>
-              </div>
-            </div>
-          ) : feature ? (
-            <ModeProvider featureId={feature.id}>
-              {/* Header */}
-              <div className="px-3 py-1.5 border-b border-border shrink-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold truncate min-w-0 flex-1">
-                    {feature.title}
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground ml-2 font-normal">
-                      {STATUS_LABELS[feature.status]}
-                    </span>
-                  </h2>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {/* Status transition buttons */}
-                    {feature.status === "scoped" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleStart}
-                        className="h-6 gap-1.5 text-[10px]"
-                      >
-                        <Play weight="bold" className="size-3" />
-                        Start
-                      </Button>
-                    )}
-                    {feature.status === "current" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleStatusTransition("done")}
-                        className="h-6 gap-1.5 text-[10px]"
-                      >
-                        <CheckCircle weight="bold" className="size-3" />
-                        Complete
-                      </Button>
-                    )}
+    <>
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Full-width header */}
+        {loading ? (
+          <div className="px-6 py-3 border-b border-border shrink-0">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-3 w-24 mt-1.5" />
+          </div>
+        ) : feature ? (
+          <div className="px-6 py-3 border-b border-border shrink-0">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-base font-semibold truncate min-w-0">
+                {feature.title}
+                <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground ml-2 font-normal">
+                  {STATUS_LABELS[feature.status]}
+                </span>
+              </h2>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {feature.status === "scoped" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStart}
+                    className="h-7 gap-1.5 text-[11px]"
+                  >
+                    <Play weight="bold" className="size-3.5" />
+                    Start
+                  </Button>
+                )}
+                {feature.status === "current" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStatusTransition("done")}
+                    className="h-7 gap-1.5 text-[11px]"
+                  >
+                    <CheckCircle weight="bold" className="size-3.5" />
+                    Complete
+                  </Button>
+                )}
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                  <AlertDialogTrigger asChild>
                     <Button
-                      variant={openPanel === 'code-review' ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setOpenPanel(openPanel === 'code-review' ? null : 'code-review')}
-                      className="h-6 gap-1 text-[10px] px-2"
-                      title="View code changes"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-muted-foreground hover:text-destructive"
+                      title="Delete feature"
                     >
-                      <GitDiffIcon weight="bold" className="size-3.5 text-muted-foreground" />
-                      {changesCount > 0 && (
-                        <span className="flex items-center justify-center min-w-[14px] h-[14px] px-1 text-[9px] font-mono bg-destructive text-destructive-foreground rounded-sm">
-                          {changesCount}
-                        </span>
-                      )}
+                      <Trash weight="bold" className="size-3.5" />
                     </Button>
-                    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 text-muted-foreground hover:text-destructive"
-                          title="Delete feature"
-                        >
-                          <Trash weight="bold" className="size-3.5" />
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Feature?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will archive &ldquo;{feature.title}&rdquo; and remove it from your project. You can
+                        restore it later from archived features.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel asChild>
+                        <Button variant="outline">Cancel</Button>
+                      </AlertDialogCancel>
+                      <AlertDialogAction asChild>
+                        <Button variant="destructive" onClick={handleDeleteFeature}>
+                          Delete
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Feature?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will archive &ldquo;{feature.title}&rdquo; and remove it from your project. You can
-                            restore it later from archived features.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel asChild>
-                            <Button variant="outline">Cancel</Button>
-                          </AlertDialogCancel>
-                          <AlertDialogAction asChild>
-                            <Button variant="destructive" onClick={handleDeleteFeature}>
-                              Delete
-                            </Button>
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="size-7">
-                      <X weight="bold" className="size-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chat Area */}
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <FeatureChat
-                  key={messagesKey}
-                  projectId={projectId}
-                  featureId={feature.id}
-                  featureTitle={feature.title}
-                  initialIdea={feature.initialIdea || undefined}
-                  initialMessages={messages}
-                  onSpecGenerated={handleSpecGenerated}
-                  onAcceptChange={handleAcceptChange}
-                  onRejectChange={handleRejectChange}
-                  onWireframeGenerated={handleWireframeGenerated}
-                  onSessionReset={handleSessionReset}
-                  currentSpecMarkdown={specContent}
-                  hasPendingChange={pendingChange !== null}
-                  hasSavedSpec={!!feature.specMarkdown}
-                  onStatusChange={() => handleStatusTransition("ready")}
-                />
-              </div>
-
-            </ModeProvider>
-          ) : (
-            <div className="flex-1 flex flex-col">
-              <div className="flex items-center justify-end px-4 py-3 border-b border-border">
-                <Button variant="ghost" size="icon" onClick={onClose} className="size-8">
-                  <X weight="bold" className="size-4" />
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button variant="ghost" size="icon" onClick={onClose} className="size-7">
+                  <X weight="bold" className="size-3.5" />
                 </Button>
               </div>
-              <div className="flex-1 flex items-center justify-center">
-                <p className="font-mono text-sm text-muted-foreground">Feature not found</p>
-              </div>
             </div>
-          )}
+          </div>
+        ) : (
+          <div className="px-6 py-3 border-b border-border shrink-0 flex items-center justify-end">
+            <Button variant="ghost" size="icon" onClick={onClose} className="size-7">
+              <X weight="bold" className="size-3.5" />
+            </Button>
+          </div>
+        )}
+
+        {/* Content area: centered chat + spec panel */}
+        <div className="flex-1 flex min-h-0">
+          <div className="flex-1 flex justify-center min-w-0 px-6">
+            <div className="w-full max-w-3xl flex flex-col min-h-0">
+              {loading ? (
+                <div className="flex-1 p-4 space-y-4">
+                  <div className="flex gap-3">
+                    <Skeleton className="size-8 rounded-sm shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 justify-end">
+                    <div className="space-y-2 flex-1 max-w-[80%]">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-1/2 ml-auto" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Skeleton className="size-8 rounded-sm shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  </div>
+                </div>
+              ) : feature ? (
+                <ModeProvider featureId={feature.id}>
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    <FeatureChat
+                      key={messagesKey}
+                      projectId={projectId}
+                      featureId={feature.id}
+                      featureTitle={feature.title}
+                      initialIdea={feature.initialIdea || undefined}
+                      initialMessages={messages}
+                      onSpecGenerated={handleSpecGenerated}
+                      onAcceptChange={handleAcceptChange}
+                      onRejectChange={handleRejectChange}
+                      onWireframeGenerated={handleWireframeGenerated}
+                      onSessionReset={handleSessionReset}
+                      currentSpecMarkdown={specContent}
+                      hasPendingChange={pendingChange !== null}
+                      hasSavedSpec={!!feature.specMarkdown}
+                      onStatusChange={() => handleStatusTransition("ready")}
+                    />
+                  </div>
+                </ModeProvider>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="font-mono text-sm text-muted-foreground">Feature not found</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Spec panel - right side */}
+          <CollapsibleSideBar
+            label="SPEC"
+            isExpanded={openPanel === 'spec'}
+            onToggle={() => setOpenPanel(openPanel === 'spec' ? null : 'spec')}
+            hasContent={hasSpec}
+            expandedWidth="w-[500px] max-w-[50%]"
+            onDelete={() => setShowDeleteSpecDialog(true)}
+          >
+            <SpecEditor
+              ref={editorRef}
+              content={pendingChange?.proposedMarkdown ?? specContent}
+              onChange={handleSpecChange}
+              saveStatus={saveStatus}
+              diffMarkdown={pendingChange?.originalMarkdown ?? undefined}
+              viewMode={pendingChange ? "diff" : "rich-text"}
+              projectContext={project}
+              featureTitle={feature?.title}
+            />
+          </CollapsibleSideBar>
         </div>
       </div>
 
@@ -710,6 +596,6 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
