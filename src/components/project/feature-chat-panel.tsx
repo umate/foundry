@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { Play, CheckCircle, Trash, X } from "@phosphor-icons/react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { Play, CheckCircle, Trash, X, CaretDown, Check, Lightbulb, Target } from "@phosphor-icons/react";
 import { useTrackOpenPanel, useBackgroundStream } from "@/components/project/background-stream-context";
 import { ModeProvider } from "@/components/providers/mode-provider";
 import { toast } from "sonner";
@@ -21,7 +21,13 @@ import { Button } from "@/components/ui/button";
 import { FeatureChat } from "@/components/feature/feature-chat";
 import { SpecEditor } from "@/components/feature/spec-editor";
 import { CollapsibleSideBar } from "@/components/ui/collapsible-side-bar";
-import { FeatureStatus, STATUS_LABELS } from "@/types/feature";
+import { FeatureStatus, STATUS_LABELS, STATUS_ORDER, mapUiStatusToDb } from "@/types/feature";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from "@/components/ui/dropdown-menu";
 import type { FeatureMessage } from "@/db/schema";
 import type { MDXEditorMethods } from "@mdxeditor/editor";
 
@@ -45,6 +51,46 @@ interface FeatureData {
   specMarkdown: string | null;
   wireframe: string | null;
   initialIdea: string | null;
+}
+
+const STATUS_ICONS: Record<FeatureStatus, React.ComponentType<{ weight?: string; className?: string }>> = {
+  idea: Lightbulb,
+  scoped: Target,
+  current: Play,
+  done: CheckCircle,
+};
+
+function StatusDropdown({ currentStatus, onStatusChange }: { currentStatus: FeatureStatus; onStatusChange: (status: FeatureStatus) => void }) {
+  const Icon = STATUS_ICONS[currentStatus];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-[11px] font-mono uppercase tracking-wider">
+          <Icon weight="bold" className="size-3.5" />
+          {STATUS_LABELS[currentStatus]}
+          <CaretDown weight="bold" className="size-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {STATUS_ORDER.map((status) => {
+          const ItemIcon = STATUS_ICONS[status];
+          const isCurrent = status === currentStatus;
+          return (
+            <DropdownMenuItem
+              key={status}
+              disabled={isCurrent}
+              onClick={() => onStatusChange(status)}
+              className="gap-2 font-mono uppercase tracking-wider text-[11px]"
+            >
+              <ItemIcon weight="bold" className="size-3.5" />
+              {STATUS_LABELS[status]}
+              {isCurrent && <Check weight="bold" className="size-3.5 ml-auto" />}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function FeatureChatPanel({ featureId, projectId, project, onClose, onFeatureUpdated }: FeatureChatPanelProps) {
@@ -216,30 +262,24 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     }
   }, [feature?.id]);
 
-  // Handle status transition
+  // Handle status transition (accepts UI status, maps to DB status for API)
   const handleStatusTransition = useCallback(
-    async (newStatus: "ready" | "done") => {
+    async (newStatus: FeatureStatus) => {
       if (!featureId) return;
+      const dbStatus = mapUiStatusToDb(newStatus);
 
       try {
         const response = await fetch(`/api/features/${featureId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus })
+          body: JSON.stringify({ status: dbStatus })
         });
 
         if (response.ok) {
-          // Update local state with UI-friendly status
           setFeature((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  status: newStatus === "ready" ? "current" : "done"
-                }
-              : null
+            prev ? { ...prev, status: newStatus } : null
           );
           onFeatureUpdated();
-          // Close the sheet when marking as done
           if (newStatus === "done") {
             onClose();
           }
@@ -263,8 +303,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
 
     if (!featureId || !feature) return;
 
-    // Update status to ready
-    await handleStatusTransition("ready");
+    // Update status to in-progress
+    await handleStatusTransition("current");
 
     // Create implementation prompt
     const implementationPrompt = `The spec is ready. Let's implement this feature:\n\n${specContent}`;
@@ -417,11 +457,12 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-base font-semibold truncate min-w-0">
                 {feature.title}
-                <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground ml-2 font-normal">
-                  {STATUS_LABELS[feature.status]}
-                </span>
               </h2>
               <div className="flex items-center gap-1.5 shrink-0">
+                <StatusDropdown
+                  currentStatus={feature.status}
+                  onStatusChange={handleStatusTransition}
+                />
                 {feature.status === "scoped" && (
                   <Button
                     variant="outline"
@@ -535,7 +576,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                       currentSpecMarkdown={specContent}
                       hasPendingChange={pendingChange !== null}
                       hasSavedSpec={!!feature.specMarkdown}
-                      onStatusChange={() => handleStatusTransition("ready")}
+                      onStatusChange={() => handleStatusTransition("current")}
                     />
                   </div>
                 </ModeProvider>
