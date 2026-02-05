@@ -6,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { PaperPlaneRight, ArrowRight } from "@phosphor-icons/react";
+import { PaperPlaneRightIcon, ArrowRightIcon, ChatCenteredDotsIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import type { ClarificationQuestion } from "@/lib/hooks/use-claude-code-chat";
 
@@ -79,8 +79,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
       return;
     }
 
-    // Multi-question: auto-advance to next question after brief delay
-    // so user can see their selection confirmed
+    // Multi-question: auto-advance to next tab after brief delay
     if (questionIndex < questions.length - 1) {
       setTimeout(() => {
         setActiveTab(String(questionIndex + 1));
@@ -116,7 +115,6 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
   const handleSubmit = () => {
     if (submitted) return;
 
-    // Build final responses with "Other" text resolved
     const finalResponses = new Map<number, string | string[]>();
 
     questions.forEach((q, i) => {
@@ -136,7 +134,7 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
     onSubmit(finalResponses);
   };
 
-  // Single question layout (no tabs needed)
+  // Single question layout
   if (questions.length === 1) {
     const question = questions[0];
     const isOtherSelected = question.multiSelect
@@ -144,123 +142,151 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
       : selections.get(0) === OTHER_OPTION;
 
     return (
-      <div className="space-y-2">
-        <p className="text-sm text-foreground">{question.question}</p>
+      <div className={cn(
+        "relative my-3 -mx-2 border-2 border-foreground/15 bg-card rounded-md overflow-hidden",
+        isDisabled && "opacity-60 pointer-events-none"
+      )}>
+        <div className="flex items-center px-4 py-2 border-b border-foreground/10 bg-muted/40">
+          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground">
+            <ChatCenteredDotsIcon weight="bold" className="size-3.5" />
+            Quick question
+          </div>
+        </div>
 
-        <QuestionOptions
-          question={question}
-          questionIndex={0}
-          selection={selections.get(0)}
-          onSingleSelect={handleSingleSelect}
-          onMultiSelect={handleMultiSelect}
-          disabled={isDisabled}
-        />
+        <div className="px-4 pt-4 pb-3 space-y-3">
+          <h3 className="text-base font-semibold leading-snug text-foreground">
+            {question.question}
+          </h3>
 
-        {isOtherSelected && (
-          <Input
-            placeholder="Type your answer..."
-            value={otherText.get(0) || ""}
-            onChange={(e) => handleOtherTextChange(0, e.target.value)}
+          <QuestionOptions
+            question={question}
+            questionIndex={0}
+            selection={selections.get(0)}
+            onSingleSelect={handleSingleSelect}
+            onMultiSelect={handleMultiSelect}
             disabled={isDisabled}
-            className="text-sm"
-            autoFocus
           />
-        )}
 
-        {(question.multiSelect || isOtherSelected) && (
-          <Button
-            onClick={handleSubmit}
-            disabled={!isCurrentAnswered() || isDisabled}
-            className="w-full"
-            size="sm"
-          >
-            <PaperPlaneRight weight="bold" className="size-4" />
-            Submit
-          </Button>
-        )}
+          {isOtherSelected && (
+            <Input
+              placeholder="Type your answer..."
+              value={otherText.get(0) || ""}
+              onChange={(e) => handleOtherTextChange(0, e.target.value)}
+              disabled={isDisabled}
+              className="text-sm"
+              autoFocus
+            />
+          )}
+
+          {(question.multiSelect || isOtherSelected) && (
+            <Button
+              onClick={handleSubmit}
+              disabled={!isCurrentAnswered() || isDisabled}
+              className="w-full"
+              size="sm"
+            >
+              <PaperPlaneRightIcon weight="bold" className="size-4" />
+              Submit
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
 
-  // Multiple questions layout with controlled tabs
+  // Multiple questions layout with tabs inside card
   const isOtherSelected = currentQuestion?.multiSelect
     ? ((selections.get(currentIndex) as string[]) || []).includes(OTHER_OPTION)
     : selections.get(currentIndex) === OTHER_OPTION;
 
   return (
-    <div className="space-y-2">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full justify-start overflow-x-auto">
-          {questions.map((q, i) => (
-            <TabsTrigger key={i} value={String(i)} className="flex-shrink-0">
-              {q.header}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+    <div className={cn(
+      "relative my-3 -mx-2 border-2 border-foreground/15 bg-card rounded-md overflow-hidden",
+      isDisabled && "opacity-60 pointer-events-none"
+    )}>
+      <div className="flex items-center px-4 py-2 border-b border-foreground/10 bg-muted/40">
+        <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          <ChatCenteredDotsIcon weight="bold" className="size-3.5" />
+          Quick question
+        </div>
+      </div>
 
-        {questions.map((question, questionIndex) => {
-          const isOther = question.multiSelect
-            ? ((selections.get(questionIndex) as string[]) || []).includes(OTHER_OPTION)
-            : selections.get(questionIndex) === OTHER_OPTION;
+      <div className="px-4 pt-3 pb-3 space-y-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full justify-start overflow-x-auto">
+            {questions.map((q, i) => (
+              <TabsTrigger key={i} value={String(i)} className="shrink-0">
+                {q.header}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-          return (
-            <TabsContent key={questionIndex} value={String(questionIndex)} className="mt-2 space-y-2">
-              <p className="text-sm text-muted-foreground">{question.question}</p>
+          {questions.map((question, questionIndex) => {
+            const isOther = question.multiSelect
+              ? ((selections.get(questionIndex) as string[]) || []).includes(OTHER_OPTION)
+              : selections.get(questionIndex) === OTHER_OPTION;
 
-              <QuestionOptions
-                question={question}
-                questionIndex={questionIndex}
-                selection={selections.get(questionIndex)}
-                onSingleSelect={handleSingleSelect}
-                onMultiSelect={handleMultiSelect}
-                disabled={isDisabled}
-              />
+            return (
+              <TabsContent key={questionIndex} value={String(questionIndex)} className="mt-3 space-y-3">
+                <h3 className="text-base font-semibold leading-snug text-foreground">
+                  {question.question}
+                </h3>
 
-              {isOther && (
-                <Input
-                  placeholder="Type your answer..."
-                  value={otherText.get(questionIndex) || ""}
-                  onChange={(e) => handleOtherTextChange(questionIndex, e.target.value)}
+                <QuestionOptions
+                  question={question}
+                  questionIndex={questionIndex}
+                  selection={selections.get(questionIndex)}
+                  onSingleSelect={handleSingleSelect}
+                  onMultiSelect={handleMultiSelect}
                   disabled={isDisabled}
-                  className="text-sm"
-                  autoFocus
                 />
-              )}
-            </TabsContent>
-          );
-        })}
-      </Tabs>
 
-      {/* Show Next button for multiSelect or Other selected (non-last), Submit on last */}
-      {(currentQuestion?.multiSelect || isOtherSelected) && !isLastQuestion && (
-        <Button
-          onClick={handleNext}
-          disabled={!isCurrentAnswered() || isDisabled}
-          variant="outline"
-          className="w-full"
-          size="sm"
-        >
-          <ArrowRight weight="bold" className="size-4" />
-          Next
-        </Button>
-      )}
+                {isOther && (
+                  <Input
+                    placeholder="Type your answer..."
+                    value={otherText.get(questionIndex) || ""}
+                    onChange={(e) => handleOtherTextChange(questionIndex, e.target.value)}
+                    disabled={isDisabled}
+                    className="text-sm"
+                    autoFocus
+                  />
+                )}
+              </TabsContent>
+            );
+          })}
+        </Tabs>
 
-      {isLastQuestion && (
-        <Button
-          onClick={handleSubmit}
-          disabled={!isAllAnswered || isDisabled}
-          className="w-full"
-          size="sm"
-        >
-          <PaperPlaneRight weight="bold" className="size-4" />
-          Submit
-        </Button>
-      )}
+        {/* Next button for multiSelect or Other (non-last question) */}
+        {(currentQuestion?.multiSelect || isOtherSelected) && !isLastQuestion && (
+          <Button
+            onClick={handleNext}
+            disabled={!isCurrentAnswered() || isDisabled}
+            variant="outline"
+            className="w-full"
+            size="sm"
+          >
+            <ArrowRightIcon weight="bold" className="size-4" />
+            Next
+          </Button>
+        )}
+
+        {isLastQuestion && (
+          <Button
+            onClick={handleSubmit}
+            disabled={!isAllAnswered || isDisabled}
+            className="w-full"
+            size="sm"
+          >
+            <PaperPlaneRightIcon weight="bold" className="size-4" />
+            Submit
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
 
-// Shared component for rendering options - cleaner, no borders
+// Shared component for rendering options
 function QuestionOptions({
   question,
   questionIndex,
@@ -285,7 +311,7 @@ function QuestionOptions({
           <label
             key={optionIndex}
             className={cn(
-              "flex items-start gap-2 px-2 py-1 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
+              "flex items-start gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
               selectedLabels.includes(option.label) && "bg-muted",
               disabled && "opacity-50 cursor-not-allowed"
             )}
@@ -301,7 +327,7 @@ function QuestionOptions({
             <div className="min-w-0 flex-1">
               <div className="text-sm font-mono leading-tight">{option.label}</div>
               {option.description && (
-                <div className="text-xs text-muted-foreground leading-tight">{option.description}</div>
+                <div className="text-xs text-muted-foreground leading-tight mt-0.5">{option.description}</div>
               )}
             </div>
           </label>
@@ -310,7 +336,7 @@ function QuestionOptions({
         {/* Other option */}
         <label
           className={cn(
-            "flex items-start gap-2 px-2 py-1 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
+            "flex items-start gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
             selectedLabels.includes(OTHER_OPTION) && "bg-muted",
             disabled && "opacity-50 cursor-not-allowed"
           )}
@@ -341,7 +367,7 @@ function QuestionOptions({
         <label
           key={optionIndex}
           className={cn(
-            "flex items-start gap-2 px-2 py-1 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
+            "flex items-start gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
             selection === option.label && "bg-muted",
             disabled && "opacity-50 cursor-not-allowed"
           )}
@@ -350,7 +376,7 @@ function QuestionOptions({
           <div className="min-w-0 flex-1">
             <div className="text-sm font-mono leading-tight">{option.label}</div>
             {option.description && (
-              <div className="text-xs text-muted-foreground leading-tight">{option.description}</div>
+              <div className="text-xs text-muted-foreground leading-tight mt-0.5">{option.description}</div>
             )}
           </div>
         </label>
@@ -359,7 +385,7 @@ function QuestionOptions({
       {/* Other option */}
       <label
         className={cn(
-          "flex items-start gap-2 px-2 py-1 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
+          "flex items-start gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors hover:bg-muted/50",
           selection === OTHER_OPTION && "bg-muted",
           disabled && "opacity-50 cursor-not-allowed"
         )}

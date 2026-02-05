@@ -675,7 +675,7 @@ export function FeatureChat({
                     return (
                       <div
                         key={`${message.id}-${i}`}
-                        className={message.role === "user" ? "rounded-md py-0.5 px-2 bg-background" : ""}
+                        className={message.role === "user" ? "rounded-md py-0.5 px-2 bg-muted/50" : ""}
                       >
                         <div className="text-sm markdown-content max-w-none">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
@@ -688,7 +688,7 @@ export function FeatureChat({
                     return (
                       <div
                         key={`${message.id}-${i}`}
-                        className={message.role === "user" ? "rounded-md overflow-hidden bg-background" : ""}
+                        className={message.role === "user" ? "rounded-md overflow-hidden bg-muted/50" : ""}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
