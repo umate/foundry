@@ -172,6 +172,12 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
               placeholder="Type your answer..."
               value={otherText.get(0) || ""}
               onChange={(e) => handleOtherTextChange(0, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && isCurrentAnswered() && !isDisabled) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
               disabled={isDisabled}
               className="text-sm"
               autoFocus
@@ -246,6 +252,16 @@ export function ClarificationCard({ questions, onSubmit, disabled = false }: Cla
                     placeholder="Type your answer..."
                     value={otherText.get(questionIndex) || ""}
                     onChange={(e) => handleOtherTextChange(questionIndex, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && isCurrentAnswered() && !isDisabled) {
+                        e.preventDefault();
+                        if (isLastQuestion) {
+                          handleSubmit();
+                        } else {
+                          handleNext();
+                        }
+                      }
+                    }}
                     disabled={isDisabled}
                     className="text-sm"
                     autoFocus
