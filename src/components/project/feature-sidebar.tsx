@@ -104,7 +104,7 @@ export function FeatureSidebar({
     <div className="w-72 shrink-0 border-r border-border flex flex-col bg-background">
       {/* Add Idea button */}
       {onAddIdea && (
-        <div className="p-2 border-b border-border shrink-0">
+        <div className="px-2 py-2.5 border-b border-border/50 shrink-0">
           <Button variant="outline" size="sm" onClick={onAddIdea} className="w-full">
             <PlusIcon weight="bold" />
             Add Idea

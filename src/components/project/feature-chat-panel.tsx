@@ -57,17 +57,23 @@ const STATUS_ICONS: Record<FeatureStatus, React.ComponentType<{ weight?: string;
   idea: Lightbulb,
   scoped: Target,
   current: Play,
-  done: CheckCircle,
+  done: CheckCircle
 };
 
 const STATUS_SHORT_LABELS: Record<FeatureStatus, string> = {
   idea: "Idea",
   scoped: "Defined",
   current: "Active",
-  done: "Done",
+  done: "Done"
 };
 
-function StatusDropdown({ currentStatus, onStatusChange }: { currentStatus: FeatureStatus; onStatusChange: (status: FeatureStatus) => void }) {
+function StatusDropdown({
+  currentStatus,
+  onStatusChange
+}: {
+  currentStatus: FeatureStatus;
+  onStatusChange: (status: FeatureStatus) => void;
+}) {
   const Icon = STATUS_ICONS[currentStatus];
   return (
     <DropdownMenu>
@@ -108,7 +114,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   const [feature, setFeature] = useState<FeatureData | null>(null);
   const [messages, setMessages] = useState<FeatureMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openPanel, setOpenPanel] = useState<'spec' | 'wireframe' | null>(null);
+  const [openPanel, setOpenPanel] = useState<"spec" | "wireframe" | null>(null);
 
   // Get background stream for sending implementation messages
   const { sendMessage: bgSendMessage, getStreamState, clearPendingChange } = useBackgroundStream();
@@ -195,40 +201,43 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   }, [featureId]);
 
   // Handle spec generation from chat - saves immediately
-  const handleSpecGenerated = useCallback(async (markdown: string) => {
-    setSpecContent(markdown);
-    if (editorRef.current) {
-      editorRef.current.setMarkdown(markdown);
-    }
+  const handleSpecGenerated = useCallback(
+    async (markdown: string) => {
+      setSpecContent(markdown);
+      if (editorRef.current) {
+        editorRef.current.setMarkdown(markdown);
+      }
 
-    // Save immediately instead of waiting for auto-save
-    if (!featureId || !markdown.trim()) return;
+      // Save immediately instead of waiting for auto-save
+      if (!featureId || !markdown.trim()) return;
 
-    try {
-      const response = await fetch(`/api/features/${featureId}/spec`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ specMarkdown: markdown })
-      });
+      try {
+        const response = await fetch(`/api/features/${featureId}/spec`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ specMarkdown: markdown })
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        const updatedFeature = data.feature;
-        const uiStatus = updatedFeature.status === "ready" ? "current" : updatedFeature.status;
-        setFeature((prev) => (prev ? { ...prev, status: uiStatus, specMarkdown: markdown } : null));
-        onFeatureUpdated();
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Failed to save generated spec:", response.status, errorData);
+        if (response.ok) {
+          const data = await response.json();
+          const updatedFeature = data.feature;
+          const uiStatus = updatedFeature.status === "ready" ? "current" : updatedFeature.status;
+          setFeature((prev) => (prev ? { ...prev, status: uiStatus, specMarkdown: markdown } : null));
+          onFeatureUpdated();
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("Failed to save generated spec:", response.status, errorData);
+          // Set unsaved so auto-save can retry
+          setHasUnsavedChanges(true);
+        }
+      } catch (error) {
+        console.error("Failed to save generated spec:", error);
         // Set unsaved so auto-save can retry
         setHasUnsavedChanges(true);
       }
-    } catch (error) {
-      console.error("Failed to save generated spec:", error);
-      // Set unsaved so auto-save can retry
-      setHasUnsavedChanges(true);
-    }
-  }, [featureId, onFeatureUpdated]);
+    },
+    [featureId, onFeatureUpdated]
+  );
 
   // Handle accepting the proposed change (from context)
   const handleAcceptChange = useCallback(() => {
@@ -254,20 +263,23 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
   }, [featureId, clearPendingChange]);
 
   // Handle wireframe generation
-  const handleWireframeGenerated = useCallback(async (wireframe: string) => {
-    if (!feature?.id) return;
-    setWireframeContent(wireframe);
-    setOpenPanel('wireframe');
-    try {
-      await fetch(`/api/features/${feature.id}/wireframe`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wireframe }),
-      });
-    } catch (error) {
-      console.error('Failed to save wireframe:', error);
-    }
-  }, [feature?.id]);
+  const handleWireframeGenerated = useCallback(
+    async (wireframe: string) => {
+      if (!feature?.id) return;
+      setWireframeContent(wireframe);
+      setOpenPanel("wireframe");
+      try {
+        await fetch(`/api/features/${feature.id}/wireframe`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wireframe })
+        });
+      } catch (error) {
+        console.error("Failed to save wireframe:", error);
+      }
+    },
+    [feature?.id]
+  );
 
   // Handle status transition (accepts UI status, maps to DB status for API)
   const handleStatusTransition = useCallback(
@@ -283,9 +295,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         });
 
         if (response.ok) {
-          setFeature((prev) =>
-            prev ? { ...prev, status: newStatus } : null
-          );
+          setFeature((prev) => (prev ? { ...prev, status: newStatus } : null));
           onFeatureUpdated();
           if (newStatus === "done") {
             onClose();
@@ -333,12 +343,16 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
     }
 
     // Send message via background stream
-    bgSendMessage(featureId, { text: implementationPrompt }, {
-      currentSpecMarkdown: specContent,
-      featureTitle: feature.title,
-      onSpecGenerated: undefined,
-      onPendingChange: undefined,
-    });
+    bgSendMessage(
+      featureId,
+      { text: implementationPrompt },
+      {
+        currentSpecMarkdown: specContent,
+        featureTitle: feature.title,
+        onSpecGenerated: undefined,
+        onPendingChange: undefined
+      }
+    );
   }, [specContent, featureId, feature, handleStatusTransition, bgSendMessage]);
 
   // Handle feature deletion (archive)
@@ -379,7 +393,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
         setSpecContent("");
         setWireframeContent("");
         if (featureId) clearPendingChange(featureId);
-        setFeature((prev) => prev ? { ...prev, specMarkdown: null, wireframe: null } : null);
+        setFeature((prev) => (prev ? { ...prev, specMarkdown: null, wireframe: null } : null));
         setShowDeleteSpecDialog(false);
         setOpenPanel(null); // Close the spec panel
         onFeatureUpdated();
@@ -460,23 +474,13 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
             <Skeleton className="h-3 w-24 mt-1.5" />
           </div>
         ) : feature ? (
-          <div className="px-6 py-3 border-b border-border shrink-0">
+          <div className="px-6 py-3 border-b border-border/50 shrink-0">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-base font-semibold truncate min-w-0">
-                {feature.title}
-              </h2>
+              <h2 className="text-base font-semibold truncate min-w-0">{feature.title}</h2>
               <div className="flex items-center gap-1.5 shrink-0">
-                <StatusDropdown
-                  currentStatus={feature.status}
-                  onStatusChange={handleStatusTransition}
-                />
+                <StatusDropdown currentStatus={feature.status} onStatusChange={handleStatusTransition} />
                 {feature.status === "scoped" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleStart}
-                    className="h-7 gap-1.5 text-[11px]"
-                  >
+                  <Button variant="outline" size="sm" onClick={handleStart} className="h-7 gap-1.5 text-[11px]">
                     <Play weight="bold" className="size-3.5" />
                     Start
                   </Button>
@@ -507,8 +511,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Feature?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will archive &ldquo;{feature.title}&rdquo; and remove it from your project. You can
-                        restore it later from archived features.
+                        This will archive &ldquo;{feature.title}&rdquo; and remove it from your project. You can restore
+                        it later from archived features.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -598,8 +602,8 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           {/* Spec panel - right side */}
           <CollapsibleSideBar
             label="SPEC"
-            isExpanded={openPanel === 'spec'}
-            onToggle={() => setOpenPanel(openPanel === 'spec' ? null : 'spec')}
+            isExpanded={openPanel === "spec"}
+            onToggle={() => setOpenPanel(openPanel === "spec" ? null : "spec")}
             hasContent={hasSpec}
             expandedWidth="w-[500px] max-w-[50%]"
             onDelete={() => setShowDeleteSpecDialog(true)}
@@ -624,8 +628,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Specification?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the spec and wireframe for this feature.
-              Your chat history will be preserved.
+              This will permanently delete the spec and wireframe for this feature. Your chat history will be preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -633,11 +636,7 @@ export function FeatureChatPanel({ featureId, projectId, project, onClose, onFea
               <Button variant="outline">Cancel</Button>
             </AlertDialogCancel>
             <AlertDialogAction asChild>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteSpec}
-                disabled={isDeletingSpec}
-              >
+              <Button variant="destructive" onClick={handleDeleteSpec} disabled={isDeletingSpec}>
                 {isDeletingSpec ? "Deleting..." : "Delete"}
               </Button>
             </AlertDialogAction>

@@ -2,7 +2,18 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { GearIcon, TrashIcon, MagnifyingGlassIcon, XIcon, CircleIcon, ArrowUpIcon, SpinnerGapIcon, GitDiffIcon, PlayIcon, TerminalIcon } from "@phosphor-icons/react";
+import {
+  GearIcon,
+  TrashIcon,
+  MagnifyingGlassIcon,
+  XIcon,
+  CircleIcon,
+  ArrowUpIcon,
+  SpinnerGapIcon,
+  GitDiffIcon,
+  PlayIcon,
+  TerminalIcon
+} from "@phosphor-icons/react";
 import type { DevServerStatus } from "@/lib/dev-server-manager";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./project-selector";
@@ -33,14 +44,47 @@ interface AppHeaderProps {
   onOpenDevServerLogs?: () => void;
 }
 
-export function AppHeader({ currentProjectId, currentProjectName, featureName, searchQuery, onSearchChange, onAddIdea, onCreateProject, onOpenSettings, onOpenCodeReview, onDeleteFeature, repoPath, branchStatus, onRefreshBranchStatus, onBranchNeedsCommit, onPush, isPushing, devServerStatus, onStartDevServer, onStopDevServer, onOpenDevServerLogs }: AppHeaderProps) {
+export function AppHeader({
+  currentProjectId,
+  currentProjectName,
+  featureName,
+  searchQuery,
+  onSearchChange,
+  onAddIdea,
+  onCreateProject,
+  onOpenSettings,
+  onOpenCodeReview,
+  onDeleteFeature,
+  repoPath,
+  branchStatus,
+  onRefreshBranchStatus,
+  onBranchNeedsCommit,
+  onPush,
+  isPushing,
+  devServerStatus,
+  onStartDevServer,
+  onStopDevServer,
+  onOpenDevServerLogs
+}: AppHeaderProps) {
   return (
     <header className="h-12 border-b border-foreground/20 bg-card px-4 flex items-center justify-between shrink-0">
       {/* Left: Logo + Project Selector + Git Controls + Feature Breadcrumb */}
       <div className="flex items-center gap-3">
         <Link href="/" className="hover:opacity-80 transition-opacity">
-          <Image src="/foundry-logo-full.png" alt="Foundry" width={100} height={24} className="h-6 w-auto dark:hidden" />
-          <Image src="/foundry-logo-inverted.png" alt="Foundry" width={100} height={24} className="h-6 w-auto hidden dark:block" />
+          <Image
+            src="/foundry-logo-full.png"
+            alt="Foundry"
+            width={100}
+            height={24}
+            className="h-6 w-auto dark:hidden"
+          />
+          <Image
+            src="/foundry-logo-inverted.png"
+            alt="Foundry"
+            width={100}
+            height={24}
+            className="h-6 w-auto hidden dark:block"
+          />
         </Link>
         <span className="text-foreground/30">|</span>
         <ProjectSelector
@@ -58,61 +102,74 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
               onNeedsCommit={onBranchNeedsCommit}
             />
 
-            {/* Uncommitted changes indicator */}
-            {onOpenCodeReview && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onOpenCodeReview}
-                className="gap-1.5 h-7 px-2"
-                title={branchStatus.uncommittedCount > 0 ? `${branchStatus.uncommittedCount} uncommitted change${branchStatus.uncommittedCount !== 1 ? "s" : ""}` : "View code changes"}
-              >
-                <GitDiffIcon weight="bold" className="size-3.5" />
-                {branchStatus.uncommittedCount > 0 && (
-                  <>
-                    <CircleIcon weight="fill" className="size-2 text-secondary" />
-                    <span className="font-mono text-xs">{branchStatus.uncommittedCount}</span>
-                  </>
-                )}
-              </Button>
-            )}
-
             {/* Push indicator */}
             {branchStatus.commitsAhead > 0 && branchStatus.hasRemote && onPush && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onPush}
-                disabled={isPushing}
-                className="gap-1.5 h-7 px-2"
-                title={`Push ${branchStatus.commitsAhead} commit${branchStatus.commitsAhead !== 1 ? "s" : ""}`}
-              >
-                {isPushing ? (
-                  <SpinnerGapIcon weight="bold" className="size-3 animate-spin" />
-                ) : (
-                  <>
-                    <ArrowUpIcon weight="bold" className="size-3" />
-                    <span className="font-mono text-xs uppercase tracking-wider">Push</span>
-                    <CircleIcon weight="fill" className="size-1.5 text-secondary" />
-                    <span className="font-mono text-xs">{branchStatus.commitsAhead}</span>
-                  </>
-                )}
-              </Button>
+              <>
+                <span className="text-foreground/30">|</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onPush}
+                  disabled={isPushing}
+                  className="gap-1.5 h-7 px-2"
+                  title={`Push ${branchStatus.commitsAhead} commit${branchStatus.commitsAhead !== 1 ? "s" : ""}`}
+                >
+                  {isPushing ? (
+                    <SpinnerGapIcon weight="bold" className="size-3 animate-spin" />
+                  ) : (
+                    <>
+                      <ArrowUpIcon weight="bold" className="size-4 text-secondary/75" />
+                      <span className="font-mono text-xs uppercase tracking-wider">Push</span>
+                      <span className="font-mono text-[10px] py-0.25 px-1.25 rounded-full bg-secondary/80 text-secondary-foreground ml-1">
+                        {branchStatus.commitsAhead}
+                      </span>
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+
+            {/* Uncommitted changes indicator */}
+            {onOpenCodeReview && (
+              <>
+                <span className="text-foreground/30">|</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onOpenCodeReview}
+                  className="gap-1.5 h-7 px-2"
+                  title={
+                    branchStatus.uncommittedCount > 0
+                      ? `${branchStatus.uncommittedCount} uncommitted change${
+                          branchStatus.uncommittedCount !== 1 ? "s" : ""
+                        }`
+                      : "View code changes"
+                  }
+                >
+                  <GitDiffIcon weight="bold" className="size-4 text-secondary/75" />
+                  {branchStatus.uncommittedCount > 0 && (
+                    <>
+                      <span className="font-mono text-xs uppercase tracking-wider">Changes</span>
+                      <span className="font-mono text-[10px] py-0.25 px-1.25 rounded-full bg-secondary/80 text-secondary-foreground ml-1">
+                        {branchStatus.uncommittedCount}
+                      </span>
+                    </>
+                  )}
+                </Button>
+              </>
             )}
           </>
         )}
         {featureName && (
           <>
             <span className="text-foreground/30">/</span>
-            <span className="font-mono text-sm text-foreground/70 truncate max-w-[400px]">
-              {featureName}
-            </span>
+            <span className="font-mono text-sm text-foreground/70 truncate max-w-[400px]">{featureName}</span>
           </>
         )}
       </div>
 
       {/* Center: Search Bar */}
-      <div className="flex items-center">
+      {/* <div className="flex items-center">
         <div className="relative w-72">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-foreground/40" />
           <input
@@ -131,7 +188,7 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
             </button>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
@@ -149,7 +206,11 @@ export function AppHeader({ currentProjectId, currentProjectName, featureName, s
               >
                 <CircleIcon
                   weight="fill"
-                  className={`size-2 ${devServerStatus === "running" ? "text-green-500 animate-pulse-slow" : "text-yellow-500 animate-pulse"}`}
+                  className={`size-2 ${
+                    devServerStatus === "running"
+                      ? "text-green-500 animate-pulse-slow"
+                      : "text-yellow-500 animate-pulse"
+                  }`}
                 />
                 <span className="font-mono text-xs uppercase tracking-wider">
                   {devServerStatus === "starting" ? "Starting..." : "Server"}
