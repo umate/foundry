@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Lightbulb, Target, Play, CheckCircle, PlusIcon } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
-import { Feature, FeaturesByStatus, FeatureStatus, STATUS_LABELS, SIDEBAR_STATUS_ORDER } from '@/types/feature';
-import { useBackgroundStream } from './background-stream-context';
-import { StreamIndicator } from './stream-indicator';
+import { Lightbulb, Target, Play, CheckCircle, PlusIcon } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/button";
+import { Feature, FeaturesByStatus, FeatureStatus, STATUS_LABELS, SIDEBAR_STATUS_ORDER } from "@/types/feature";
+import { useBackgroundStream } from "./background-stream-context";
+import { StreamIndicator } from "./stream-indicator";
 
 interface FeatureSidebarProps {
   features: FeaturesByStatus;
@@ -26,26 +26,26 @@ function matchesSearch(feature: Feature, query: string): boolean {
 
 const getStatusIcon = (status: FeatureStatus) => {
   switch (status) {
-    case 'idea':
+    case "idea":
       return <Lightbulb weight="bold" className="size-3.5" />;
-    case 'scoped':
+    case "scoped":
       return <Target weight="bold" className="size-3.5" />;
-    case 'current':
+    case "current":
       return <Play weight="bold" className="size-3.5" />;
-    case 'done':
+    case "done":
       return <CheckCircle weight="bold" className="size-3.5" />;
   }
 };
 
 const getFeatureIcon = (status: FeatureStatus) => {
   switch (status) {
-    case 'idea':
+    case "idea":
       return <Lightbulb className="size-3.5 text-secondary shrink-0" />;
-    case 'scoped':
+    case "scoped":
       return <Target className="size-3.5 text-secondary shrink-0" />;
-    case 'current':
+    case "current":
       return <Play className="size-3.5 text-secondary shrink-0" />;
-    case 'done':
+    case "done":
       return <CheckCircle className="size-3.5 text-secondary shrink-0" />;
   }
 };
@@ -53,7 +53,7 @@ const getFeatureIcon = (status: FeatureStatus) => {
 function SidebarFeatureCard({
   feature,
   isSelected,
-  onClick,
+  onClick
 }: {
   feature: Feature;
   isSelected: boolean;
@@ -61,23 +61,22 @@ function SidebarFeatureCard({
 }) {
   const { isStreaming } = useBackgroundStream();
   const hasActiveStream = isStreaming(feature.id);
+  const isCompleted = feature.status === "done";
 
   return (
     <button
       onClick={onClick}
       className={`w-full text-left px-3 py-2 transition-colors relative ${
-        isSelected
-          ? 'bg-card border-l-2 border-secondary'
-          : 'border-l-2 border-transparent hover:bg-card/50'
+        isSelected ? "bg-card border-l-2 border-secondary" : "border-l-2 border-transparent hover:bg-card/50"
       }`}
     >
-      <div className="flex items-center gap-2 min-w-0">
+      <div className={`flex items-center gap-2 min-w-0 ${isCompleted ? "opacity-60" : ""}`}>
         <div className="shrink-0 mt-0.5">{getFeatureIcon(feature.status)}</div>
         <span className="text-sm font-medium truncate flex-1">{feature.title}</span>
         {hasActiveStream && <StreamIndicator className="shrink-0" />}
       </div>
       {(feature.summary || feature.description) && (
-        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 pl-5.5">
+        <p className={`text-xs text-muted-foreground line-clamp-2 mt-0.5 pl-5.5 ${isCompleted ? "opacity-60" : ""}`}>
           {feature.summary || feature.description}
         </p>
       )}
@@ -90,14 +89,14 @@ export function FeatureSidebar({
   searchQuery,
   selectedFeatureId,
   onFeatureClick,
-  onAddIdea,
+  onAddIdea
 }: FeatureSidebarProps) {
   const filteredFeatures = searchQuery
     ? {
         idea: features.idea.filter((f) => matchesSearch(f, searchQuery)),
         scoped: features.scoped.filter((f) => matchesSearch(f, searchQuery)),
         current: features.current.filter((f) => matchesSearch(f, searchQuery)),
-        done: features.done.filter((f) => matchesSearch(f, searchQuery)),
+        done: features.done.filter((f) => matchesSearch(f, searchQuery))
       }
     : features;
 
@@ -120,14 +119,10 @@ export function FeatureSidebar({
           return (
             <div key={status}>
               {/* Status group header */}
-              <div className="h-8 px-3 flex items-center gap-2 bg-card/50 border-b border-foreground/5 sticky top-0 z-10">
-                {getStatusIcon(status)}
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider">
-                  {STATUS_LABELS[status]}
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {statusFeatures.length}
-                </span>
+              <div className="h-8 px-3.5 flex items-center gap-1.5 border-b border-foreground/5 sticky top-0 z-10 bg-background text-muted-foreground/70">
+                <span className="size-4">{getStatusIcon(status)}</span>
+                <span className="font-mono text-xs uppercase tracking-wider">{STATUS_LABELS[status]}</span>
+                <span className="font-mono text-xs opacity-60">{statusFeatures.length}</span>
               </div>
 
               {/* Feature cards */}
