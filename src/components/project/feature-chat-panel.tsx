@@ -60,6 +60,13 @@ const STATUS_ICONS: Record<FeatureStatus, React.ComponentType<{ weight?: string;
   done: CheckCircle,
 };
 
+const STATUS_SHORT_LABELS: Record<FeatureStatus, string> = {
+  idea: "Idea",
+  scoped: "Defined",
+  current: "Active",
+  done: "Done",
+};
+
 function StatusDropdown({ currentStatus, onStatusChange }: { currentStatus: FeatureStatus; onStatusChange: (status: FeatureStatus) => void }) {
   const Icon = STATUS_ICONS[currentStatus];
   return (
@@ -67,8 +74,8 @@ function StatusDropdown({ currentStatus, onStatusChange }: { currentStatus: Feat
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 gap-1.5 text-[11px] font-mono uppercase tracking-wider">
           <Icon weight="bold" className="size-3.5" />
-          {STATUS_LABELS[currentStatus]}
-          <CaretDown weight="bold" className="size-3" />
+          {STATUS_SHORT_LABELS[currentStatus]}
+          <CaretDown className="size-3 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
